@@ -1,0 +1,10 @@
+plotly
+pandas
+openai
+requests
+pydantic
+beautifulsoup4
+fastapi
+python-dotenv
+kaleido
+uvicorn[standard]
