@@ -1,6 +1,5 @@
 "use client"; // This is a client component
 
-import Image from "next/image";
 import styles from "./page.module.css";
 import React from "react";
 
@@ -57,20 +56,27 @@ export default function Home() {
   };
 
   return (
-    <div className="app-container">
-      <h1>Recipe Ganntifier</h1>
-      <div className="input-container">
+    <div className={styles.appContainer}>
+      <header className={styles.appHeader}>
+        <h1>Recipe Ganntifier</h1>
+      </header>
+      <div className={styles.inputContainer}>
         <input
           type="text"
           placeholder="Enter the URL of a recipe"
           value={inputValue}
           onChange={handleInputChange}
+          className={styles.inputField}
         />
-        <button onClick={handleDownload} disabled={loading}>
+        <button
+          onClick={handleDownload}
+          disabled={loading}
+          className={styles.submitButton}
+        >
           {loading ? "Generating..." : "Generate Gannt Chart"}
         </button>
       </div>
-      {error && <p className="error-message">{error}</p>}
+      {error && <p className={styles.errorMessage}>{error}</p>}
     </div>
   );
 }

@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, HttpUrl
 
 from logic import ganntify_recipe
 
@@ -25,7 +25,7 @@ app.add_middleware(
 
 
 class RecipeUrl(BaseModel):
-    recipe_url: str
+    recipe_url: HttpUrl
 
 
 @app.get("/")
