@@ -11,6 +11,8 @@ origins = [
     "http://localhost:3001",
     "https://recipe-gannt.anog.fr",
     "https://www.recipe-gannt.anog.fr",
+    "https://recipe-gannt-front.onrender.com/",
+    "https://www.recipe-gannt-front.onrender.com/"
 ]
 
 app.add_middleware(
