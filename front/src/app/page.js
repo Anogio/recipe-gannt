@@ -11,7 +11,7 @@ export default function Home() {
 
   const baseUrl =
     process.env.NODE_ENV === "production"
-      ? "https://recipe-gannt.vercel.app"
+      ? "https://recipe-gannt.onrender.com"
       : "http://127.0.0.1:8000";
 
   const handleInputChange = (e) => {
