@@ -26,6 +26,10 @@ class RecipeUrl(BaseModel):
     recipe_url: str
 
 
+@app.get("/")
+async def root():
+    return {"message": "Hello World"}
+
 @app.post("/ganntify_recipe")
 def ganntify_recipe_api(recipe_url: RecipeUrl):
     figure = ganntify_recipe(recipe_url.recipe_url)
