@@ -58,16 +58,16 @@ export default function Home() {
 
   return (
     <div className="app-container">
-      <h1>Recipe2Gannt</h1>
+      <h1>Recipe Ganntifier</h1>
       <div className="input-container">
         <input
           type="text"
-          placeholder="Enter the URL of a recipe (ex: https://www.marmiton.org/recettes/recette_boeuf-bourguignon_18889.aspx"
+          placeholder="Enter the URL of a recipe"
           value={inputValue}
           onChange={handleInputChange}
         />
         <button onClick={handleDownload} disabled={loading}>
-          {loading ? "Downloading..." : "Download File"}
+          {loading ? "Generating..." : "Generate Gannt Chart"}
         </button>
       </div>
       {error && <p className="error-message">{error}</p>}
