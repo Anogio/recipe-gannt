@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: gannte-recipe-back
+    name: gannt-recipe-back
     runtime: python
     plan: free
     autoDeploy: true
