@@ -1,5 +1,5 @@
 .appContainer {
-  max-width: 500px;
+  max-width: 90%;
   margin: 50px auto;
   padding: 20px;
   background: #ffffff;
@@ -60,4 +60,8 @@
   margin-top: 15px;
   color: #f44336;
   font-weight: bold;
+}
+
+.ganntContainer {
+  
 }

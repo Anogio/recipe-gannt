@@ -170,11 +170,21 @@ def generate_dependency_graph(recipe_string: str) -> str:
 class PlannedStep:
     name: str
     start_time: int
-    duration: int
+    duration_minutes: int
+    step_id: int
+    dependencies: list[int]
 
     @property
-    def end_time(self):
-        return self.start_time + self.duration
+    def end_time(self) -> int:
+        return self.start_time + self.duration_minutes
+
+    @property
+    def start_date(self) -> datetime.datetime:
+        return to_time(self.start_time)
+
+    @property
+    def end_date(self) -> datetime.datetime:
+        return to_time(self.end_time)
 
 
 def parse_recipe_graph(recipe_graph_parsable_string: str) -> RecipeGraph:
@@ -214,7 +224,7 @@ def visit_recipe_graph(graph: RecipeGraph) -> list[int]:
     return visit_order
 
 
-def plan_steps(graph: RecipeGraph) -> dict[int, PlannedStep]:
+def plan_steps(graph: RecipeGraph) -> list[PlannedStep]:
     # TODO have the dependency and step mappings in the graph data structure instead
     depends_on_mapping = defaultdict(set)
     depended_on_mapping = defaultdict(set)
@@ -242,10 +252,14 @@ def plan_steps(graph: RecipeGraph) -> dict[int, PlannedStep]:
             default=0,
         )
         planned_steps[step_id] = PlannedStep(
-            name=step.name, start_time=start_time, duration=step.duration
+            name=step.name,
+            start_time=start_time,
+            duration_minutes=step.duration,
+            step_id=step_id,
+            dependencies=list(depends_on_mapping[step_id]),
         )
 
-    return planned_steps
+    return list(planned_steps.values())
 
 
 def to_time(minute_offset: int) -> datetime.datetime:
@@ -254,11 +268,11 @@ def to_time(minute_offset: int) -> datetime.datetime:
     )
 
 
-def make_gannt(planned_steps: dict[int, PlannedStep]) -> Figure:
+def make_gannt(planned_steps: list[PlannedStep]) -> Figure:
     df = pd.DataFrame(
         [
             {"Step": step.name, "Start": step.start_time, "End": step.end_time}
-            for step in planned_steps.values()
+            for step in planned_steps
         ]
     )
 
@@ -272,15 +286,16 @@ def make_gannt(planned_steps: dict[int, PlannedStep]) -> Figure:
     return fig
 
 
-def ganntify_recipe(url: str) -> Figure:
+def ganntify_recipe(url: str) -> tuple[list[PlannedStep], Figure]:
     recipe = extract_recipe(url)
     graph_string = generate_dependency_graph(recipe)
     recipe_graph = parse_recipe_graph(graph_string)
     planned_steps = plan_steps(recipe_graph)
-    return make_gannt(planned_steps)
+    return planned_steps, make_gannt(planned_steps)
 
 
 if __name__ == "__main__":
     URL = "https://www.marmiton.org/recettes/recette_boeuf-bourguignon_18889.aspx"
-    fig = ganntify_recipe(URL)
+    planned_steps, fig = ganntify_recipe(URL)
+    print(planned_steps)
     fig.show()
