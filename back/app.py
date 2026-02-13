@@ -46,14 +46,14 @@ async def root():
 
 @app.post("/ganntify_recipe")
 def ganntify_recipe_api(recipe_url: RecipeUrl):
-    _, figure = ganntify_recipe(recipe_url.recipe_url.unicode_string())
+    _, figure = ganntify_recipe(str(recipe_url.recipe_url))
     img_bytes = figure.to_image(format="png")
     return Response(content=img_bytes, media_type="image/png")
 
 
 @app.post("/ganntify_recipe_data")
 def ganntify_recipe_api(recipe_url: RecipeUrl):
-    planned_steps, _ = ganntify_recipe(recipe_url.recipe_url.unicode_string())
+    planned_steps, _ = ganntify_recipe(str(recipe_url.recipe_url))
     return PlannedSteps(
         planned_steps=[
             PlannedStep(

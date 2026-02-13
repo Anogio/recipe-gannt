@@ -1,5 +1,6 @@
 import dataclasses
 import datetime
+import json
 import re
 from collections import defaultdict
 
@@ -11,10 +12,12 @@ from bs4 import BeautifulSoup
 from plotly.graph_objs import Figure
 from pydantic import BaseModel, Field
 
-from environment import OPENAI_API_KEY
+from environment import AZURE_OPENAI_API_KEY, AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_DEPLOYMENT
 
-OPENAI_CLIENT = openai.OpenAI(
-    api_key=OPENAI_API_KEY,
+OPENAI_CLIENT = openai.AzureOpenAI(
+    api_key=AZURE_OPENAI_API_KEY,
+    api_version="2025-04-01-preview",
+    azure_endpoint=AZURE_OPENAI_ENDPOINT,
 )
 
 prompt_extract_recipe_content = """
@@ -116,7 +119,10 @@ class RecipeGraph(BaseModel):
 
 
 def get_website_text(url: str) -> str:
-    html_content = requests.get(url).content
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    }
+    html_content = requests.get(url, headers=headers).content
     soup = BeautifulSoup(html_content, "html.parser")
     element = soup.find("body")
     text = element.get_text()
@@ -132,7 +138,7 @@ def extract_recipe(url: str) -> str:
                 "content": prompt_extract_recipe_content.format(text=website_text),
             }
         ],
-        model="gpt-4o-mini",
+        model=AZURE_OPENAI_DEPLOYMENT,
     )
     return chat_completion.choices[0].message.content
 
@@ -145,7 +151,7 @@ def generate_dependency_graph(recipe_string: str) -> str:
                 "content": prompt_recipe_to_graph.format(recipe=recipe_string),
             }
         ],
-        model="gpt-4o-mini",
+        model=AZURE_OPENAI_DEPLOYMENT,
         response_format={"type": "json_object"},
     )
     return chat_completion.choices[0].message.content
