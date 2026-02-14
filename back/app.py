@@ -2,6 +2,7 @@ from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, HttpUrl
 
+from history import recipe_history
 from logic import ganntify_recipe, search_recipes
 
 app = FastAPI()
@@ -26,6 +27,8 @@ app.add_middleware(
 
 class RecipeUrl(BaseModel):
     recipe_url: HttpUrl
+    title: str | None = None
+    snippet: str | None = None
 
 
 class PlannedStep(BaseModel):
@@ -51,6 +54,10 @@ class SearchResponse(BaseModel):
     has_more: bool
 
 
+class PopularRecipesResponse(BaseModel):
+    recipes: list[SearchResult]
+
+
 @app.get("/")
 async def root():
     return {"message": "Hello World"}
@@ -65,16 +72,42 @@ async def search_recipes_api(query: str, page: int = 0) -> SearchResponse:
     )
 
 
+@app.get("/popular_recipes")
+async def get_popular_recipes() -> PopularRecipesResponse:
+    """Return the list of recently processed recipes."""
+    entries = await recipe_history.get_all()
+    return PopularRecipesResponse(
+        recipes=[
+            SearchResult(title=e.title, url=e.url, snippet=e.snippet)
+            for e in entries
+        ]
+    )
+
+
 @app.post("/ganntify_recipe")
-def ganntify_recipe_api(recipe_url: RecipeUrl):
-    _, figure = ganntify_recipe(str(recipe_url.recipe_url))
+async def ganntify_recipe_api(recipe_url: RecipeUrl):
+    url = str(recipe_url.recipe_url)
+    _, figure, extracted_title = ganntify_recipe(url)
+
+    # Record to history
+    title = recipe_url.title or extracted_title or "Recipe"
+    snippet = recipe_url.snippet or ""
+    await recipe_history.add(title=title, url=url, snippet=snippet)
+
     img_bytes = figure.to_image(format="png")
     return Response(content=img_bytes, media_type="image/png")
 
 
 @app.post("/ganntify_recipe_data")
-def ganntify_recipe_data_api(recipe_url: RecipeUrl):
-    planned_steps, _ = ganntify_recipe(str(recipe_url.recipe_url))
+async def ganntify_recipe_data_api(recipe_url: RecipeUrl):
+    url = str(recipe_url.recipe_url)
+    planned_steps, _, extracted_title = ganntify_recipe(url)
+
+    # Record to history
+    title = recipe_url.title or extracted_title or "Recipe"
+    snippet = recipe_url.snippet or ""
+    await recipe_history.add(title=title, url=url, snippet=snippet)
+
     return PlannedSteps(
         planned_steps=[
             PlannedStep(

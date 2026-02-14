@@ -216,10 +216,29 @@ def search_recipes(query: str, page: int = 0) -> dict:
 class ExtractedRecipe(BaseModel):
     recipe: str
     ingredients: str
+    title: str = ""
 
 
 def extract_recipe(url: str) -> ExtractedRecipe:
-    website_text = get_website_text(url)
+    # Fetch page and extract title
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    }
+    html_content = requests.get(url, headers=headers).content
+    soup = BeautifulSoup(html_content, "html.parser")
+
+    # Extract title
+    title = ""
+    title_tag = soup.find("title")
+    if title_tag and title_tag.string:
+        title = title_tag.string.strip()
+    elif h1_tag := soup.find("h1"):
+        title = h1_tag.get_text().strip()
+
+    # Extract body text
+    body = soup.find("body")
+    website_text = re.sub(r"\n+", "\n", body.get_text()) if body else ""
+
     chat_completion = OPENAI_CLIENT.chat.completions.create(
         messages=[
             {
@@ -230,7 +249,9 @@ def extract_recipe(url: str) -> ExtractedRecipe:
         model=MODEL,
         response_format={"type": "json_object"},
     )
-    return ExtractedRecipe.model_validate_json(chat_completion.choices[0].message.content)
+    result = ExtractedRecipe.model_validate_json(chat_completion.choices[0].message.content)
+    result.title = title
+    return result
 
 
 def generate_dependency_graph(recipe_string: str, ingredients: str) -> str:
@@ -384,16 +405,17 @@ def make_gannt(planned_steps: list[PlannedStep]) -> Figure:
     return fig
 
 
-def ganntify_recipe(url: str) -> tuple[list[PlannedStep], Figure]:
+def ganntify_recipe(url: str) -> tuple[list[PlannedStep], Figure, str]:
     extracted = extract_recipe(url)
     graph_string = generate_dependency_graph(extracted.recipe, extracted.ingredients)
     recipe_graph = parse_recipe_graph(graph_string)
     planned_steps = plan_steps(recipe_graph)
-    return planned_steps, make_gannt(planned_steps)
+    return planned_steps, make_gannt(planned_steps), extracted.title
 
 
 if __name__ == "__main__":
     URL = "https://www.marmiton.org/recettes/recette_boeuf-bourguignon_18889.aspx"
-    planned_steps, fig = ganntify_recipe(URL)
+    planned_steps, fig, title = ganntify_recipe(URL)
+    print(f"Title: {title}")
     print(planned_steps)
     fig.show()

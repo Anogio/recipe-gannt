@@ -24,6 +24,9 @@ export default function Home() {
   const [hasMore, setHasMore] = React.useState(false);
   const [loadingMore, setLoadingMore] = React.useState(false);
 
+  // Popular recipes state
+  const [popularRecipes, setPopularRecipes] = React.useState([]);
+
   // Checklist state
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState("");
@@ -89,6 +92,22 @@ export default function Home() {
 
     return () => clearInterval(interval);
   }, [timers]);
+
+  // Fetch popular recipes on mount
+  React.useEffect(() => {
+    fetch(`${baseUrl}/popular_recipes`)
+      .then((res) => (res.ok ? res.json() : { recipes: [] }))
+      .then((data) => setPopularRecipes(data.recipes))
+      .catch(() => {});
+  }, [baseUrl]);
+
+  // Helper to refresh popular recipes
+  const refreshPopularRecipes = () => {
+    fetch(`${baseUrl}/popular_recipes`)
+      .then((res) => (res.ok ? res.json() : { recipes: [] }))
+      .then((data) => setPopularRecipes(data.recipes))
+      .catch(() => {});
+  };
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) {
@@ -162,7 +181,11 @@ export default function Home() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ recipe_url: recipe.url }),
+        body: JSON.stringify({
+          recipe_url: recipe.url,
+          title: recipe.title,
+          snippet: recipe.snippet,
+        }),
       });
 
       if (!response.ok) {
@@ -171,6 +194,7 @@ export default function Home() {
 
       const data = await response.json();
       setSteps(data.planned_steps);
+      refreshPopularRecipes();
     } catch (err) {
       setError("Could not load this recipe. The website may not be supported.");
       setSelectedRecipe(null);
@@ -295,10 +319,7 @@ export default function Home() {
     setLoading(true);
     setCompletedSteps(new Set());
 
-    const recipe = {
-      title: "Recipe",
-      url: manualUrl.trim(),
-    };
+    const url = manualUrl.trim();
 
     try {
       const response = await fetch(`${baseUrl}/ganntify_recipe_data`, {
@@ -306,7 +327,7 @@ export default function Home() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ recipe_url: recipe.url }),
+        body: JSON.stringify({ recipe_url: url }),
       });
 
       if (!response.ok) {
@@ -315,7 +336,11 @@ export default function Home() {
 
       const data = await response.json();
       setSteps(data.planned_steps);
-      setSelectedRecipe(recipe);
+      setSelectedRecipe({
+        title: getDomain(url),
+        url: url,
+      });
+      refreshPopularRecipes();
     } catch (err) {
       setError("Could not load this recipe. The website may not be supported.");
     } finally {
@@ -690,6 +715,40 @@ export default function Home() {
           >
             {loading ? <span className={styles.spinner} /> : "→"}
           </button>
+        </div>
+      )}
+
+      {/* Popular recipes - show in empty state */}
+      {!searchLoading && searchResults.length === 0 && popularRecipes.length > 0 && (
+        <div className={styles.popularRecipes}>
+          <h2 className={styles.popularTitle}>Popular recipes</h2>
+          <ul className={styles.resultsList}>
+            {popularRecipes.slice(0, 10).map((recipe, index) => (
+              <li key={`${recipe.url}-${index}`} className={styles.resultItem}>
+                <div className={styles.resultContent}>
+                  <button
+                    className={styles.resultButton}
+                    onClick={() => handleSelectRecipe(recipe)}
+                  >
+                    <span className={styles.resultTitle}>{recipe.title}</span>
+                    <span className={styles.resultSource}>{getDomain(recipe.url)}</span>
+                    {recipe.snippet && (
+                      <span className={styles.resultSnippet}>{recipe.snippet}</span>
+                    )}
+                  </button>
+                  <a
+                    href={recipe.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={styles.resultOriginalLink}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    View original
+                  </a>
+                </div>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 

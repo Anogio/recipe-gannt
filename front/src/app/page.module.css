@@ -558,6 +558,21 @@
   cursor: not-allowed;
 }
 
+/* Popular recipes styles */
+.popularRecipes {
+  margin-top: 30px;
+  padding-top: 20px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.popularTitle {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #666;
+  margin-bottom: 16px;
+  text-align: center;
+}
+
 /* Mobile responsive styles */
 @media (max-width: 480px) {
   .appContainer {
