@@ -1,0 +1,31 @@
+[project]
+name = "recipe-gantt-backend"
+version = "0.1.0"
+description = "Backend for Recipe Gantt application"
+requires-python = ">=3.11"
+dependencies = [
+    "plotly",
+    "pandas",
+    "openai",
+    "requests",
+    "pydantic>=2.0",
+    "beautifulsoup4",
+    "fastapi",
+    "python-dotenv",
+    "kaleido",
+    "uvicorn[standard]",
+    "ddgs",
+    "httpx>=0.27.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "black",
+    "isort",
+]
+
+[tool.black]
+line-length = 88
+
+[tool.isort]
+profile = "black"
