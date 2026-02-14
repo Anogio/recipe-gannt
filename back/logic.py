@@ -18,7 +18,7 @@ from environment import OPENAI_API_KEY
 OPENAI_CLIENT = openai.OpenAI(
     api_key=OPENAI_API_KEY,
 )
-MODEL="gpt-4.1-mini"
+MODEL = "gpt-4.1-mini"
 
 prompt_extract_recipe_content = """
 I will provide you with the full text of a cooking website page.
@@ -249,7 +249,9 @@ def extract_recipe(url: str) -> ExtractedRecipe:
         model=MODEL,
         response_format={"type": "json_object"},
     )
-    result = ExtractedRecipe.model_validate_json(chat_completion.choices[0].message.content)
+    result = ExtractedRecipe.model_validate_json(
+        chat_completion.choices[0].message.content
+    )
     result.title = title
     return result
 
@@ -259,7 +261,9 @@ def generate_dependency_graph(recipe_string: str, ingredients: str) -> str:
         messages=[
             {
                 "role": "user",
-                "content": prompt_recipe_to_graph.format(recipe=recipe_string, ingredients=ingredients),
+                "content": prompt_recipe_to_graph.format(
+                    recipe=recipe_string, ingredients=ingredients
+                ),
             }
         ],
         model=MODEL,

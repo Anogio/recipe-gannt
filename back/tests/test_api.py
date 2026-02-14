@@ -1,6 +1,6 @@
 """Tests for app.py - FastAPI endpoints."""
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -84,15 +84,13 @@ class TestPopularRecipesEndpoint:
     @patch("app.recipe_history")
     def test_returns_popular_recipes(self, mock_history, client):
         """Should return popular recipes from history."""
-        mock_history.get_all = AsyncMock(
-            return_value=[
-                RecipeHistoryEntry(
-                    title="Popular Recipe",
-                    url="https://example.com/popular",
-                    snippet="Very popular",
-                )
-            ]
-        )
+        mock_history.get_all.return_value = [
+            RecipeHistoryEntry(
+                title="Popular Recipe",
+                url="https://example.com/popular",
+                snippet="Very popular",
+            )
+        ]
 
         response = client.get("/popular_recipes")
 
@@ -104,7 +102,7 @@ class TestPopularRecipesEndpoint:
     @patch("app.recipe_history")
     def test_returns_empty_when_no_history(self, mock_history, client):
         """Should return empty list when no history."""
-        mock_history.get_all = AsyncMock(return_value=[])
+        mock_history.get_all.return_value = []
 
         response = client.get("/popular_recipes")
 
@@ -128,7 +126,7 @@ class TestGanntifyRecipeDataEndpoint:
         mock_step.ingredients = ["water", "salt"]
 
         mock_ganntify.return_value = ([mock_step], MagicMock(), "Test Recipe")
-        mock_history.add = AsyncMock()
+        mock_history.add = MagicMock()
 
         response = client.post(
             "/ganntify_recipe_data",
@@ -148,7 +146,7 @@ class TestGanntifyRecipeDataEndpoint:
     def test_records_to_history(self, mock_ganntify, mock_history, client):
         """Should record recipe to history."""
         mock_ganntify.return_value = ([], MagicMock(), "Extracted Title")
-        mock_history.add = AsyncMock()
+        mock_history.add = MagicMock()
 
         client.post(
             "/ganntify_recipe_data",
@@ -167,10 +165,12 @@ class TestGanntifyRecipeDataEndpoint:
 
     @patch("app.recipe_history")
     @patch("app.ganntify_recipe")
-    def test_uses_extracted_title_as_fallback(self, mock_ganntify, mock_history, client):
+    def test_uses_extracted_title_as_fallback(
+        self, mock_ganntify, mock_history, client
+    ):
         """Should use extracted title when none provided."""
         mock_ganntify.return_value = ([], MagicMock(), "Extracted Title")
-        mock_history.add = AsyncMock()
+        mock_history.add = MagicMock()
 
         client.post(
             "/ganntify_recipe_data",
@@ -185,10 +185,12 @@ class TestGanntifyRecipeDataEndpoint:
 
     @patch("app.recipe_history")
     @patch("app.ganntify_recipe")
-    def test_uses_default_title_when_no_title(self, mock_ganntify, mock_history, client):
+    def test_uses_default_title_when_no_title(
+        self, mock_ganntify, mock_history, client
+    ):
         """Should use 'Recipe' as default when no title available."""
         mock_ganntify.return_value = ([], MagicMock(), "")
-        mock_history.add = AsyncMock()
+        mock_history.add = MagicMock()
 
         client.post(
             "/ganntify_recipe_data",
@@ -230,7 +232,7 @@ class TestGanntifyRecipeEndpoint:
         mock_figure = MagicMock()
         mock_figure.to_image.return_value = b"\x89PNG\r\n\x1a\n"  # PNG header
         mock_ganntify.return_value = ([], mock_figure, "Test Recipe")
-        mock_history.add = AsyncMock()
+        mock_history.add = MagicMock()
 
         response = client.post(
             "/ganntify_recipe",
@@ -248,7 +250,7 @@ class TestGanntifyRecipeEndpoint:
         mock_figure = MagicMock()
         mock_figure.to_image.return_value = b"\x89PNG\r\n\x1a\n"
         mock_ganntify.return_value = ([], mock_figure, "Extracted")
-        mock_history.add = AsyncMock()
+        mock_history.add = MagicMock()
 
         client.post(
             "/ganntify_recipe",
@@ -277,6 +279,44 @@ class TestCORSConfiguration:
         assert "access-control-allow-origin" in response.headers
 
 
+class TestInputValidation:
+    """Tests for input validation."""
+
+    def test_search_empty_query_rejected(self, client):
+        """Should reject empty search query."""
+        response = client.get("/search_recipes?query=")
+        assert response.status_code == 422
+
+    def test_search_too_long_query_rejected(self, client):
+        """Should reject search query over 200 characters."""
+        long_query = "a" * 201
+        response = client.get(f"/search_recipes?query={long_query}")
+        assert response.status_code == 422
+
+    def test_search_negative_page_rejected(self, client):
+        """Should reject negative page number."""
+        response = client.get("/search_recipes?query=pasta&page=-1")
+        assert response.status_code == 422
+
+    def test_search_page_over_100_rejected(self, client):
+        """Should reject page number over 100."""
+        response = client.get("/search_recipes?query=pasta&page=101")
+        assert response.status_code == 422
+
+    @patch("app.ganntify_recipe")
+    def test_ganntify_error_returns_500(self, mock_ganntify, client):
+        """Should return 500 when ganntify fails."""
+        mock_ganntify.side_effect = Exception("Test error")
+
+        response = client.post(
+            "/ganntify_recipe_data",
+            json={"recipe_url": "https://example.com/recipe"},
+        )
+
+        assert response.status_code == 500
+        assert "Failed to process recipe" in response.json()["detail"]
+
+
 class TestModels:
     """Tests for Pydantic models validation."""
 
@@ -293,7 +333,7 @@ class TestModels:
         with patch("app.ganntify_recipe") as mock:
             mock.return_value = ([], MagicMock(), "")
             with patch("app.recipe_history") as mock_history:
-                mock_history.add = AsyncMock()
+                mock_history.add = MagicMock()
                 response = client.post(
                     "/ganntify_recipe_data",
                     json={"recipe_url": "http://example.com/recipe"},
@@ -305,7 +345,7 @@ class TestModels:
         with patch("app.ganntify_recipe") as mock:
             mock.return_value = ([], MagicMock(), "")
             with patch("app.recipe_history") as mock_history:
-                mock_history.add = AsyncMock()
+                mock_history.add = MagicMock()
                 response = client.post(
                     "/ganntify_recipe_data",
                     json={"recipe_url": "https://example.com/recipe"},

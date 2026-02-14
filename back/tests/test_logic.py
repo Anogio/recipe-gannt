@@ -214,7 +214,9 @@ class TestCanFetchContent:
         mock_response = MagicMock()
         mock_response.status_code = 200
         # Content must be at least 200 characters
-        long_content = "This is a valid recipe page with lots of content about cooking. " * 10
+        long_content = (
+            "This is a valid recipe page with lots of content about cooking. " * 10
+        )
         mock_response.content = f"<html><body>{long_content}</body></html>".encode()
         mock_get.return_value = mock_response
 
@@ -244,7 +246,11 @@ class TestCanFetchContent:
         """Should return False if JavaScript is required."""
         mock_response = MagicMock()
         mock_response.status_code = 200
-        mock_response.content = b"<html><body>Please enable JavaScript to view this page. " + b"x" * 200 + b"</body></html>"
+        mock_response.content = (
+            b"<html><body>Please enable JavaScript to view this page. "
+            + b"x" * 200
+            + b"</body></html>"
+        )
         mock_get.return_value = mock_response
 
         assert can_fetch_content("https://example.com/recipe") is False
@@ -273,6 +279,7 @@ class TestFilterAccessibleUrls:
     @patch("logic.can_fetch_content")
     def test_filters_inaccessible(self, mock_can_fetch):
         """Should filter out inaccessible URLs."""
+
         # Use a function to return consistent results regardless of call order
         def check_url(url):
             return url != "https://b.com"
@@ -307,7 +314,9 @@ class TestGetWebsiteText:
     def test_extracts_text(self, mock_get):
         """Should extract body text from HTML."""
         mock_response = MagicMock()
-        mock_response.content = b"<html><body><p>Recipe content</p><p>More content</p></body></html>"
+        mock_response.content = (
+            b"<html><body><p>Recipe content</p><p>More content</p></body></html>"
+        )
         mock_get.return_value = mock_response
 
         text = get_website_text("https://example.com/recipe")
@@ -319,7 +328,9 @@ class TestGetWebsiteText:
     def test_collapses_newlines(self, mock_get):
         """Should collapse multiple newlines."""
         mock_response = MagicMock()
-        mock_response.content = b"<html><body><p>Line 1</p>\n\n\n\n<p>Line 2</p></body></html>"
+        mock_response.content = (
+            b"<html><body><p>Line 1</p>\n\n\n\n<p>Line 2</p></body></html>"
+        )
         mock_get.return_value = mock_response
 
         text = get_website_text("https://example.com/recipe")
