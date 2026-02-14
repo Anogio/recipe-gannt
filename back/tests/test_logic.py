@@ -8,7 +8,6 @@ import pytest
 from logic import (
     PlannedStep,
     RecipeGraph,
-    Step,
     can_fetch_content,
     filter_accessible_urls,
     get_website_text,

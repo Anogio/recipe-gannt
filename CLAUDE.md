@@ -16,7 +16,8 @@ The backend uses UV for Python dependency management. The virtual environment is
 ```bash
 make install    # Install dependencies (uv sync --all-extras)
 make run        # Start dev server (uvicorn on port 8000)
-make format     # Format code with black and isort
+make format     # Format code with black, isort, and ruff --fix
+make lint       # Run ruff linter
 make lock       # Update uv.lock file
 make test       # Run test suite
 make test-cov   # Run tests with coverage report
@@ -31,7 +32,7 @@ make test-cov   # Run tests with coverage report
 
 ## Frontend
 
-Next.js application in the `front/` directory.
+Next.js 15 TypeScript application in the `front/` directory.
 
 ### Commands (from `front/` directory)
 
@@ -39,6 +40,7 @@ Next.js application in the `front/` directory.
 npm install     # Install dependencies
 npm run dev     # Start dev server (port 3000)
 npm run build   # Production build
+npm run lint    # Run ESLint
 ```
 
 ## Development

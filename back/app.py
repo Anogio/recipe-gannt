@@ -112,7 +112,7 @@ async def ganntify_recipe_api(request: Request, recipe_url: RecipeUrl):
         raise HTTPException(
             status_code=500,
             detail=f"Failed to process recipe: {str(e)}",
-        )
+        ) from e
 
     # Record to history
     title = recipe_url.title or extracted_title or "Recipe"
@@ -133,7 +133,7 @@ async def ganntify_recipe_data_api(request: Request, recipe_url: RecipeUrl):
         raise HTTPException(
             status_code=500,
             detail=f"Failed to process recipe: {str(e)}",
-        )
+        ) from e
 
     # Record to history
     title = recipe_url.title or extracted_title or "Recipe"

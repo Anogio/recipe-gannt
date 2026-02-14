@@ -56,6 +56,9 @@ jobs:
       - name: Check imports with isort
         run: uv run isort --check-only .
 
+      - name: Lint with ruff
+        run: uv run ruff check .
+
   frontend-build:
     runs-on: ubuntu-latest
     defaults:

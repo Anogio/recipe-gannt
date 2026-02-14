@@ -2,7 +2,10 @@ run:
 	uv run uvicorn app:app --reload
 
 format:
-	uv run black . && uv run isort .
+	uv run black . && uv run isort . && uv run ruff check --fix .
+
+lint:
+	uv run ruff check .
 
 install:
 	uv sync --all-extras

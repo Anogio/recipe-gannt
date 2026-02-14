@@ -157,10 +157,7 @@ def can_fetch_content(url: str) -> bool:
         if len(text.strip()) < 200:
             return False
 
-        if "enable javascript" in text.lower():
-            return False
-
-        return True
+        return "enable javascript" not in text.lower()
     except Exception:
         return False
 

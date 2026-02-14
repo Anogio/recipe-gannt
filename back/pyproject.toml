@@ -23,6 +23,7 @@ dependencies = [
 dev = [
     "black",
     "isort",
+    "ruff>=0.8.0",
     "pytest>=8.0",
     "httpx>=0.27.0",
     "respx>=0.21",
@@ -33,6 +34,31 @@ line-length = 88
 
 [tool.isort]
 profile = "black"
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # pyflakes
+    "I",      # isort
+    "B",      # flake8-bugbear
+    "C4",     # flake8-comprehensions
+    "UP",     # pyupgrade
+    "ARG",    # flake8-unused-arguments
+    "SIM",    # flake8-simplify
+]
+ignore = [
+    "E501",   # line too long (handled by black)
+    "B008",   # do not perform function calls in argument defaults (needed for FastAPI)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["ARG"]  # Unused arguments are common in test fixtures
+"app.py" = ["ARG001"]  # request parameter required by slowapi rate limiter
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
