@@ -14,13 +14,14 @@ The backend uses UV for Python dependency management. The virtual environment is
 ### Commands (from `back/` directory)
 
 ```bash
-make install    # Install dependencies (uv sync --all-extras)
-make run        # Start dev server (uvicorn on port 8000)
-make format     # Format code with black, isort, and ruff --fix
-make lint       # Run ruff linter
-make lock       # Update uv.lock file
-make test       # Run test suite
-make test-cov   # Run tests with coverage report
+make install      # Install production dependencies
+make install-dev  # Install all dependencies including dev tools
+make run          # Start dev server (uvicorn on port 8000)
+make format       # Format code with black, isort, and ruff --fix
+make lint         # Run ruff linter
+make lock         # Update uv.lock file
+make test         # Run test suite
+make test-cov     # Run tests with coverage report
 ```
 
 ### Key files

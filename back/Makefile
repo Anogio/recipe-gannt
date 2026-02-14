@@ -8,6 +8,9 @@ lint:
 	uv run ruff check .
 
 install:
+	uv sync
+
+install-dev:
 	uv sync --all-extras
 
 lock:
