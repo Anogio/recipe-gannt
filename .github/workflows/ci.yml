@@ -12,6 +12,8 @@ jobs:
     defaults:
       run:
         working-directory: back
+    env:
+      OPENAI_API_KEY: "dummy-key-for-tests"
 
     steps:
       - uses: actions/checkout@v4

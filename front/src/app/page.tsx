@@ -17,10 +17,10 @@ import {
   getDomain,
 } from "@/services/api";
 import {
+  ChecklistView,
   RecipeCard,
+  RecipeGraph,
   SearchInput,
-  StepItem,
-  StepSection,
 } from "@/components";
 
 const LOADING_MESSAGES = [
@@ -34,6 +34,9 @@ export default function Home() {
   // Input mode state
   const [inputMode, setInputMode] = useState<InputMode>("search");
   const [manualUrl, setManualUrl] = useState("");
+  const [recipeViewMode, setRecipeViewMode] = useState<"checklist" | "graph">(
+    "checklist"
+  );
 
   // Search state
   const [searchQuery, setSearchQuery] = useState("");
@@ -176,6 +179,7 @@ export default function Home() {
   const handleSelectRecipe = useCallback(
     async (recipe: SearchResult) => {
       setSelectedRecipe(recipe);
+      setRecipeViewMode("checklist");
       setSearchResults([]);
       setError("");
       setLoading(true);
@@ -216,6 +220,7 @@ export default function Home() {
     try {
       const data = await loadRecipeFromUrl(url);
       setSteps(data.planned_steps);
+      setRecipeViewMode("checklist");
       setSelectedRecipe({
         title: getDomain(url),
         url: url,
@@ -233,6 +238,7 @@ export default function Home() {
 
   const handleBackToSearch = useCallback(() => {
     setSelectedRecipe(null);
+    setRecipeViewMode("checklist");
     setSteps([]);
     setCompletedSteps(new Set());
     setTimers({});
@@ -396,86 +402,47 @@ export default function Home() {
           <p className={styles.progressText}>
             {completedSteps.size} of {steps.length} steps completed
           </p>
-
-          {readySteps.length > 0 && (
-            <StepSection
-              title="Now"
-              subtitle="You can do these steps now. The next steps will appear as you progress in the recipe"
-              count={readySteps.length}
-              isExpanded={expandedSections.ready}
-              onToggle={toggleReadySection}
-            >
-              {readySteps.map((step) => (
-                <StepItem
-                  key={step.step_id}
-                  step={step}
-                  isCompleted={false}
-                  isBlocked={false}
-                  isTimerDone={timerCompleted.has(step.step_id)}
-                  timer={timers[step.step_id]}
-                  onToggle={toggleStep}
-                  onStartTimer={startTimer}
-                  onPauseTimer={pauseTimer}
-                  onResetTimer={resetTimer}
-                />
-              ))}
-            </StepSection>
-          )}
-
-          {blockedSteps.length > 0 && (
-            <StepSection
-              title="Next up"
-              subtitle="You still need to complete other steps to do these"
-              count={blockedSteps.length}
-              isExpanded={expandedSections.blocked}
-              onToggle={toggleBlockedSection}
-            >
-              {blockedSteps.map((step) => (
-                <StepItem
-                  key={step.step_id}
-                  step={step}
-                  isCompleted={false}
-                  isBlocked={true}
-                  isTimerDone={false}
-                  blockingDeps={getBlockingDeps(step)}
-                  onToggle={toggleStep}
-                  onStartTimer={startTimer}
-                  onPauseTimer={pauseTimer}
-                  onResetTimer={resetTimer}
-                />
-              ))}
-            </StepSection>
-          )}
-
-          {completedStepsList.length > 0 && (
-            <StepSection
-              title="Completed"
-              count={completedStepsList.length}
-              isExpanded={expandedSections.completed}
-              onToggle={toggleCompletedSection}
-            >
-              {completedStepsList.map((step) => (
-                <StepItem
-                  key={step.step_id}
-                  step={step}
-                  isCompleted={true}
-                  isBlocked={false}
-                  isTimerDone={false}
-                  onToggle={toggleStep}
-                  onStartTimer={startTimer}
-                  onPauseTimer={pauseTimer}
-                  onResetTimer={resetTimer}
-                />
-              ))}
-            </StepSection>
-          )}
-
-          {readySteps.length === 0 && blockedSteps.length === 0 && (
-            <div className={styles.allDone}>
-              All steps completed! Enjoy your meal!
-            </div>
-          )}
         </div>
+
+        <div className={styles.segmentedPicker}>
+          <button
+            className={`${styles.segmentButton} ${recipeViewMode === "checklist" ? styles.segmentButtonActive : ""}`}
+            onClick={() => setRecipeViewMode("checklist")}
+          >
+            Checklist
+          </button>
+          <button
+            className={`${styles.segmentButton} ${recipeViewMode === "graph" ? styles.segmentButtonActive : ""}`}
+            onClick={() => setRecipeViewMode("graph")}
+          >
+            Graph
+          </button>
+        </div>
+
+        {recipeViewMode === "checklist" ? (
+          <ChecklistView
+            readySteps={readySteps}
+            blockedSteps={blockedSteps}
+            completedStepsList={completedStepsList}
+            expandedSections={expandedSections}
+            timerCompleted={timerCompleted}
+            timers={timers}
+            getBlockingDeps={getBlockingDeps}
+            onToggleStep={toggleStep}
+            onStartTimer={startTimer}
+            onPauseTimer={pauseTimer}
+            onResetTimer={resetTimer}
+            onToggleReadySection={toggleReadySection}
+            onToggleBlockedSection={toggleBlockedSection}
+            onToggleCompletedSection={toggleCompletedSection}
+          />
+        ) : (
+          <RecipeGraph
+            steps={steps}
+            completedSteps={completedSteps}
+            onToggleStep={toggleStep}
+          />
+        )}
       </div>
     );
   }

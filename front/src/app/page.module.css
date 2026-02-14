@@ -573,6 +573,146 @@
   text-align: center;
 }
 
+/* Graph visualization */
+.graphContainer {
+  margin-top: 24px;
+  padding: 14px;
+  border: 1px solid #e6e6e6;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.graphSubtitle {
+  margin: 6px 0 10px;
+  font-size: 0.85rem;
+  color: #777;
+}
+
+.graphLegend {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  flex-wrap: wrap;
+  font-size: 0.8rem;
+  color: #666;
+  margin-bottom: 12px;
+}
+
+.graphLegend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.legendDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.legendCompleted {
+  background: #d7ebd4;
+}
+
+.legendReady {
+  background: #dcecff;
+}
+
+.legendBlocked {
+  background: #ececec;
+}
+
+.graphViewport {
+  overflow: auto;
+  border: 1px solid #ececec;
+  border-radius: 8px;
+  background: #fcfcfc;
+  cursor: grab;
+  touch-action: none;
+  -webkit-overflow-scrolling: touch;
+  max-height: 70vh;
+}
+
+.graphViewportDragging {
+  cursor: grabbing;
+}
+
+.graphSvg {
+  display: block;
+  width: auto;
+  min-width: max-content;
+}
+
+.graphNodeCompleted {
+  fill: #e8f5e5;
+  stroke: #76a870;
+  stroke-width: 1.2;
+}
+
+.graphNodeReady {
+  fill: #e7f1ff;
+  stroke: #7ca8d8;
+  stroke-width: 1.2;
+}
+
+.graphNodeBlocked {
+  fill: #f3f3f3;
+  stroke: #a2a2a2;
+  stroke-width: 1.2;
+}
+
+.graphNodeText {
+  font-size: 11px;
+  fill: #333;
+  font-weight: 600;
+}
+
+.graphNodeIngredients {
+  font-size: 10px;
+  fill: #6f6f6f;
+  font-style: italic;
+}
+
+.graphNodeMeta {
+  font-size: 10px;
+  fill: #666;
+}
+
+.graphNodeClickable {
+  cursor: pointer;
+}
+
+.graphNodeBlockedCursor {
+  cursor: not-allowed;
+}
+
+.graphTooltip {
+  position: fixed;
+  z-index: 20;
+  max-width: 360px;
+  padding: 10px 12px;
+  border: 1px solid #d9d9d9;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+  pointer-events: none;
+}
+
+.graphTooltipTitle {
+  font-size: 0.95rem;
+  line-height: 1.35;
+  font-weight: 600;
+  color: #222;
+}
+
+.graphTooltipMeta {
+  margin-top: 6px;
+  font-size: 0.9rem;
+  line-height: 1.35;
+  color: #555;
+}
+
 /* Mobile responsive styles */
 @media (max-width: 480px) {
   .appContainer {
@@ -669,5 +809,17 @@
 
   .timerText {
     font-size: 0.9rem;
+  }
+
+  .graphContainer {
+    padding: 12px;
+  }
+
+  .graphViewport {
+    max-height: 60vh;
+  }
+
+  .graphTooltip {
+    display: none;
   }
 }
