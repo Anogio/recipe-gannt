@@ -1,6 +1,6 @@
-# Recipe Gantt
+# Flow Recipe
 
-A web application that generates Gantt charts for recipe preparation.
+A web application that turns recipes into interactive step-by-step cooking checklists.
 
 ## Project Structure
 
@@ -18,6 +18,8 @@ make install    # Install dependencies (uv sync --all-extras)
 make run        # Start dev server (uvicorn on port 8000)
 make format     # Format code with black and isort
 make lock       # Update uv.lock file
+make test       # Run test suite
+make test-cov   # Run tests with coverage report
 ```
 
 ### Key files

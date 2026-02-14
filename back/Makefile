@@ -9,3 +9,9 @@ install:
 
 lock:
 	uv lock
+
+test:
+	uv run pytest -v
+
+test-cov:
+	uv run pytest -v --cov=. --cov-report=term-missing
