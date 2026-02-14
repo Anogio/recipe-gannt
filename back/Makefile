@@ -1,8 +1,11 @@
 run:
-	python -m uvicorn app:app --reload
+	uv run uvicorn app:app --reload
 
 format:
-	black . && isort .
+	uv run black . && uv run isort .
 
 install:
-	pip install -r requirements.txt -r requirements-dev.txt
+	uv sync --all-extras
+
+lock:
+	uv lock

@@ -2,12 +2,14 @@ import dataclasses
 import datetime
 import re
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import openai
 import pandas as pd
 import plotly.express as px
 import requests
 from bs4 import BeautifulSoup
+from ddgs import DDGS
 from plotly.graph_objs import Figure
 from pydantic import BaseModel, Field
 
@@ -20,27 +22,24 @@ MODEL="gpt-4.1-mini"
 
 prompt_extract_recipe_content = """
 I will provide you with the full text of a cooking website page.
-Your goal is to extract only the text of the recipe and nothing else (no headers/footers, no ingredients, or anything else than the description of the steps to prepare the recipe.
+Your goal is to extract:
+1. The recipe steps (the description of what to do to prepare the recipe, no headers/footers)
+2. The list of ingredients
+
+Answer in JSON format with two keys: "recipe" (the recipe steps as text) and "ingredients" (the list of ingredients as text, preserving quantities).
 
 ___
-Example good output:
-Battre les jaunes d'œufs en y ajoutant 1 pincée de sel, 2 pincées de poivre et 40 g de parmigiano reggiano râpé.
+Example input (excerpt):
+Ingrédients: 4 jaunes d'œufs, 200g de pancetta, 400g de spaghetti, 40g de parmesan, sel, poivre, huile d'olive
 
-Remplir une grande casserole d'eau et la faire chauffer avec deux pincées de gros sel.
-
-Pendant ce temps, couper la pancetta en lamelles grossières et les faire dorer dans une poêle avec 1 cuillère à soupe d'huile d'olive.
-
-Quand l’eau dans la casserole commence à bouillir mettez vos pâtes.
-
-Prendre deux cuillères à soupe d'eau de cuisson des pâtes, les verser dans le jaunes d'œufs puis remuer.
-
-Réservez la pancetta et laissez la poêle au chaud.
-
-Une fois la cuisson des pâtes al dente, les égoutter sommairement et les mettre dans la poêle et remuer.
-
-Verser le mélange dans un saladier et incorporez la préparation des jaunes d'œufs.
-
-Ajouter la pancetta et deux pincées de poivre. Servez.
+Préparation:
+Battre les jaunes d'œufs en y ajoutant 1 pincée de sel...
+___
+Example output:
+{{
+  "recipe": "Battre les jaunes d'œufs en y ajoutant 1 pincée de sel, 2 pincées de poivre et 40 g de parmigiano reggiano râpé.\n\nRemplir une grande casserole d'eau et la faire chauffer avec deux pincées de gros sel.\n\nPendant ce temps, couper la pancetta en lamelles grossières et les faire dorer dans une poêle avec 1 cuillère à soupe d'huile d'olive.\n\nQuand l'eau dans la casserole commence à bouillir mettez vos pâtes.\n\nPrendre deux cuillères à soupe d'eau de cuisson des pâtes, les verser dans le jaunes d'œufs puis remuer.\n\nRéservez la pancetta et laissez la poêle au chaud.\n\nUne fois la cuisson des pâtes al dente, les égoutter sommairement et les mettre dans la poêle et remuer.\n\nVerser le mélange dans un saladier et incorporez la préparation des jaunes d'œufs.\n\nAjouter la pancetta et deux pincées de poivre. Servez.",
+  "ingredients": "4 jaunes d'œufs, 200g de pancetta, 400g de spaghetti, 40g de parmesan râpé, sel, poivre, huile d'olive"
+}}
 ___
 Here is the text:
 {text}
@@ -48,20 +47,24 @@ Here is the text:
 
 # https://www.marmiton.org/recettes/recette_carbonara-traditionnelle_340808.aspx
 prompt_recipe_to_graph = """
-I will provide you with a cooking recipe.
+I will provide you with a cooking recipe and a list of ingredients.
 Your goal is to represent this recipe as a dependency graph, where each edge represents the fact that a step must\
  be performed before another.
 The output will be:
-- A list of steps, each with a unique id, a simple description and an estimated time in minutes
-- A list of edges that determines the dependencies between steps 
+- A list of steps, each with:
+  - a unique id
+  - a simple description (name)
+  - an estimated time in minutes (duration)
+  - a list of ingredients used in this step (ingredients). Include quantities when relevant (e.g. "400g of tomatoes"), but some ingredients don't need quantities (e.g. "salt", "pepper", "olive oil").
+- A list of edges that determines the dependencies between steps
 Whenever an explicit duration is given (e.g. 'boil the vegetables for 3 minutes), this must be used as the duration.
 
 Answer in JSON format.
 
 ___
 Example
-___ 
-Input:
+___
+Input recipe:
 
 Battre les jaunes d'œufs en y ajoutant 1 pincée de sel, 2 pincées de poivre et 40 g de parmigiano reggiano râpé.
 
@@ -69,7 +72,7 @@ Remplir une grande casserole d'eau et la faire chauffer avec deux pincées de gr
 
 Pendant ce temps, couper la pancetta en lamelles grossières et les faire dorer dans une poêle avec 1 cuillère à soupe d'huile d'olive pendant 5 minutes.
 
-Quand l’eau dans la casserole commence à bouillir mettez vos pâtes.
+Quand l'eau dans la casserole commence à bouillir mettez vos pâtes.
 
 Prendre deux cuillères à soupe d'eau de cuisson des pâtes, les verser dans le jaunes d'œufs puis remuer.
 
@@ -80,24 +83,31 @@ Une fois la cuisson des pâtes al dente, les égoutter sommairement et les mettr
 Verser le mélange dans un saladier et incorporez la préparation des jaunes d'œufs.
 
 Ajouter la pancetta et deux pincées de poivre. Servez.
+
+Input ingredients:
+
+4 jaunes d'œufs, 200g de pancetta, 400g de spaghetti, 40g de parmesan râpé, sel, poivre, huile d'olive
 ___
 Output:
 {{
     "steps": [
-        {{"id": 1, "name": "Battre les jaunes d'oeufs et ajouter du sel et du parmesan", "duration": 3}},
-        {{"id": 2, "name": "Faire bouillir une grande casserole d'eau", "duration": 2}},
-        {{"id": 3, "name": "Couper la pancetta et la cuire pendant 5 minutes", "duration": 5}},
-        {{"id": 4, "name": "Cuire les pâtes quand l'eau bout", "duration": 10}},
-        {{"id": 5, "name": "Réserver la pancetta au chaud", "duration": 1}},
-        {{"id": 6, "name": "Égoutter les pâtes et les mettre dans la poêle", "duration": 2}},
-        {{"id": 7, "name": "Mélanger le tout avec la préparation de jaunes d'oeufs, saler, poivrer", "duration": 3}} 
+        {{"id": 1, "name": "Battre les jaunes d'oeufs et ajouter du sel et du parmesan", "duration": 3, "ingredients": ["4 jaunes d'oeufs", "40g de parmesan râpé", "sel", "poivre"]}},
+        {{"id": 2, "name": "Faire bouillir une grande casserole d'eau", "duration": 2, "ingredients": ["sel"]}},
+        {{"id": 3, "name": "Couper la pancetta et la cuire pendant 5 minutes", "duration": 5, "ingredients": ["200g de pancetta", "huile d'olive"]}},
+        {{"id": 4, "name": "Cuire les pâtes quand l'eau bout", "duration": 10, "ingredients": ["400g de spaghetti"]}},
+        {{"id": 5, "name": "Réserver la pancetta au chaud", "duration": 1, "ingredients": []}},
+        {{"id": 6, "name": "Égoutter les pâtes et les mettre dans la poêle", "duration": 2, "ingredients": []}},
+        {{"id": 7, "name": "Mélanger le tout avec la préparation de jaunes d'oeufs, saler, poivrer", "duration": 3, "ingredients": ["poivre"]}}
     ],
     "dependencies": [{{"do": 1, "before":  7}}, {{"do": 2, "before": 4}}, {{"do": 3, "before": 5}}, {{"do": 4, "before": 6}},\
      {{"do": 5, "before": 6}}, {{"do": 6, "before": 7}}]
-}} 
+}}
 ___
 Here is the recipe to process:
 {recipe}
+
+Here are the ingredients:
+{ingredients}
 """
 
 
@@ -105,6 +115,7 @@ class Step(BaseModel):
     step_id: int = Field(alias="id")
     name: str
     duration: int
+    ingredients: list[str] = []
 
 
 class Dependency(BaseModel):
@@ -128,7 +139,87 @@ def get_website_text(url: str) -> str:
     return re.sub(r"\n+", "\n", text)
 
 
-def extract_recipe(url: str) -> str:
+def can_fetch_content(url: str) -> bool:
+    """Check if a URL can be scraped (returns real content, not JS blocker)."""
+    try:
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        }
+        response = requests.get(url, headers=headers, timeout=5)
+        if response.status_code != 200:
+            return False
+
+        soup = BeautifulSoup(response.content, "html.parser")
+        body = soup.find("body")
+        if not body:
+            return False
+
+        text = body.get_text()
+        if len(text.strip()) < 200:
+            return False
+
+        if "enable javascript" in text.lower():
+            return False
+
+        return True
+    except Exception:
+        return False
+
+
+def filter_accessible_urls(results: list[dict], max_workers: int = 4) -> list[dict]:
+    """Filter search results to only include accessible URLs."""
+    accessible = []
+
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        future_to_result = {
+            executor.submit(can_fetch_content, r["url"]): r for r in results
+        }
+        for future in as_completed(future_to_result):
+            result = future_to_result[future]
+            if future.result():
+                accessible.append(result)
+
+    return accessible
+
+
+PAGE_SIZE = 10
+
+
+def search_recipes(query: str, page: int = 0) -> dict:
+    """Search for recipes using DuckDuckGo with pagination.
+
+    Returns a dict with 'results' (list of recipes) and 'has_more' (boolean).
+    """
+    # Fetch enough results to cover all pages up to and including the requested page
+    fetch_count = (page + 1) * PAGE_SIZE
+
+    with DDGS() as ddgs:
+        all_results = list(ddgs.text(f"{query} recipe", max_results=fetch_count))
+
+    # Check if there might be more results
+    has_more = len(all_results) >= fetch_count
+
+    # Get only the results for the current page
+    start_idx = page * PAGE_SIZE
+    end_idx = start_idx + PAGE_SIZE
+    page_results = all_results[start_idx:end_idx]
+
+    raw_results = [
+        {"title": r["title"], "url": r["href"], "snippet": r["body"]}
+        for r in page_results
+    ]
+
+    filtered_results = filter_accessible_urls(raw_results)
+
+    return {"results": filtered_results, "has_more": has_more}
+
+
+class ExtractedRecipe(BaseModel):
+    recipe: str
+    ingredients: str
+
+
+def extract_recipe(url: str) -> ExtractedRecipe:
     website_text = get_website_text(url)
     chat_completion = OPENAI_CLIENT.chat.completions.create(
         messages=[
@@ -138,16 +229,17 @@ def extract_recipe(url: str) -> str:
             }
         ],
         model=MODEL,
+        response_format={"type": "json_object"},
     )
-    return chat_completion.choices[0].message.content
+    return ExtractedRecipe.model_validate_json(chat_completion.choices[0].message.content)
 
 
-def generate_dependency_graph(recipe_string: str) -> str:
+def generate_dependency_graph(recipe_string: str, ingredients: str) -> str:
     chat_completion = OPENAI_CLIENT.chat.completions.create(
         messages=[
             {
                 "role": "user",
-                "content": prompt_recipe_to_graph.format(recipe=recipe_string),
+                "content": prompt_recipe_to_graph.format(recipe=recipe_string, ingredients=ingredients),
             }
         ],
         model=MODEL,
@@ -178,6 +270,7 @@ class PlannedStep:
     duration_minutes: int
     step_id: int
     dependencies: list[int]
+    ingredients: list[str]
 
     @property
     def end_time(self) -> int:
@@ -262,6 +355,7 @@ def plan_steps(graph: RecipeGraph) -> list[PlannedStep]:
             duration_minutes=step.duration,
             step_id=step_id,
             dependencies=list(depends_on_mapping[step_id]),
+            ingredients=step.ingredients,
         )
 
     return list(planned_steps.values())
@@ -292,8 +386,8 @@ def make_gannt(planned_steps: list[PlannedStep]) -> Figure:
 
 
 def ganntify_recipe(url: str) -> tuple[list[PlannedStep], Figure]:
-    recipe = extract_recipe(url)
-    graph_string = generate_dependency_graph(recipe)
+    extracted = extract_recipe(url)
+    graph_string = generate_dependency_graph(extracted.recipe, extracted.ingredients)
     recipe_graph = parse_recipe_graph(graph_string)
     planned_steps = plan_steps(recipe_graph)
     return planned_steps, make_gannt(planned_steps)
