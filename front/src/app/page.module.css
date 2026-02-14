@@ -10,7 +10,7 @@
 .appHeader h1 {
   font-size: 1.8rem;
   margin-bottom: 6px;
-  color: #C45B28;
+  color: #C94528;
   text-align: center;
 }
 
@@ -50,7 +50,7 @@
 }
 
 .segmentButtonActive {
-  background: #C45B28;
+  background: #C94528;
   color: #fff;
 }
 
@@ -72,8 +72,8 @@
 
 .inputField:focus {
   outline: none;
-  border-color: #C45B28;
-  box-shadow: 0 0 5px rgba(196, 91, 40, 0.4);
+  border-color: #C94528;
+  box-shadow: 0 0 5px rgba(201, 69, 40, 0.4);
 }
 
 .submitButton {
@@ -82,7 +82,7 @@
   padding: 0;
   font-size: 1.2rem;
   color: white;
-  background-color: #C45B28;
+  background-color: #C94528;
   border: none;
   border-radius: 4px;
   cursor: pointer;
@@ -99,7 +99,7 @@
 }
 
 .submitButton:hover:not(:disabled) {
-  background-color: #A84820;
+  background-color: #A83920;
 }
 
 .spinner {
@@ -139,7 +139,7 @@
 
 .progressFill {
   height: 100%;
-  background: #C45B28;
+  background: #C94528;
   transition: width 0.3s ease;
 }
 
@@ -225,7 +225,7 @@
   height: 22px;
   margin-top: 2px;
   cursor: pointer;
-  accent-color: #C45B28;
+  accent-color: #C94528;
   flex-shrink: 0;
 }
 
@@ -266,7 +266,7 @@
 
 .timerFill {
   height: 100%;
-  background: #C45B28;
+  background: #C94528;
   transition: width 1s linear;
 }
 
@@ -284,7 +284,7 @@
   height: 28px;
   padding: 0;
   font-size: 0.9rem;
-  background: #C45B28;
+  background: #C94528;
   color: white;
   border: none;
   border-radius: 50%;
@@ -296,7 +296,7 @@
 }
 
 .timerButton:hover {
-  background: #A84820;
+  background: #A83920;
 }
 
 .timerResetButton {
@@ -322,13 +322,13 @@
 
 /* Highlight for completed timer */
 .timerDone {
-  background: #FFF3E0;
+  background: #FDEEE8;
   animation: pulse 2s ease-in-out infinite;
 }
 
 @keyframes pulse {
-  0%, 100% { background: #FFF3E0; }
-  50% { background: #FFE0B2; }
+  0%, 100% { background: #FDEEE8; }
+  50% { background: #FADDD3; }
 }
 
 .blockedItem {
@@ -350,7 +350,7 @@
 }
 
 .completedItem {
-  background: #FFFAF7;
+  background: #FDF9F7;
 }
 
 .completedText {
@@ -362,7 +362,7 @@
   text-align: center;
   padding: 30px 20px;
   font-size: 1.2rem;
-  color: #C45B28;
+  color: #C94528;
   font-weight: 600;
 }
 
@@ -422,7 +422,7 @@
 
 .resultSource {
   font-size: 0.8rem;
-  color: #C45B28;
+  color: #C94528;
   margin-top: 2px;
 }
 
@@ -440,7 +440,7 @@
   display: block;
   padding: 8px 16px;
   font-size: 0.85rem;
-  color: #C45B28;
+  color: #C94528;
   text-decoration: none;
   border-top: 1px solid #e0e0e0;
   background: #fafafa;
@@ -459,7 +459,7 @@
   align-items: flex-start;
   gap: 12px;
   padding: 12px 16px;
-  background: #FDF6F0;
+  background: #FDF5F2;
   border-radius: 8px;
   margin-bottom: 20px;
 }
@@ -479,7 +479,7 @@
 
 .recipeSource {
   font-size: 0.8rem;
-  color: #C45B28;
+  color: #C94528;
 }
 
 .selectedRecipeActions {
@@ -491,9 +491,9 @@
 .originalLink {
   padding: 6px 12px;
   font-size: 0.85rem;
-  color: #C45B28;
+  color: #C94528;
   background: #fff;
-  border: 1px solid #C45B28;
+  border: 1px solid #C94528;
   border-radius: 4px;
   text-decoration: none;
   white-space: nowrap;
@@ -501,7 +501,7 @@
 }
 
 .originalLink:hover {
-  background: #C45B28;
+  background: #C94528;
   color: #fff;
 }
 
@@ -539,16 +539,16 @@
   padding: 12px 16px;
   margin-top: 12px;
   font-size: 0.95rem;
-  color: #C45B28;
+  color: #C94528;
   background: #fff;
-  border: 1px solid #C45B28;
+  border: 1px solid #C94528;
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .loadMoreButton:hover:not(:disabled) {
-  background: #C45B28;
+  background: #C94528;
   color: #fff;
 }
 
