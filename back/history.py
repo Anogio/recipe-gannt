@@ -1,4 +1,4 @@
-import asyncio
+import threading
 from collections import OrderedDict
 from dataclasses import dataclass
 
@@ -11,16 +11,19 @@ class RecipeHistoryEntry:
 
 
 class RecipeHistory:
-    """Thread-safe in-memory storage for recently processed recipes."""
+    """Thread-safe in-memory storage for recently processed recipes.
+
+    Uses threading.Lock for compatibility with both sync and async contexts.
+    """
 
     def __init__(self, max_size: int = 100):
         self._max_size = max_size
         self._entries: OrderedDict[str, RecipeHistoryEntry] = OrderedDict()
-        self._lock = asyncio.Lock()
+        self._lock = threading.Lock()
 
-    async def add(self, title: str, url: str, snippet: str = "") -> None:
+    def add(self, title: str, url: str, snippet: str = "") -> None:
         """Add or update a recipe in history. Most recent first."""
-        async with self._lock:
+        with self._lock:
             # Remove if exists (to re-add at end)
             if url in self._entries:
                 del self._entries[url]
@@ -34,9 +37,9 @@ class RecipeHistory:
             while len(self._entries) > self._max_size:
                 self._entries.popitem(last=False)
 
-    async def get_all(self) -> list[RecipeHistoryEntry]:
+    def get_all(self) -> list[RecipeHistoryEntry]:
         """Return all entries, most recent first."""
-        async with self._lock:
+        with self._lock:
             return list(reversed(self._entries.values()))
 
 
