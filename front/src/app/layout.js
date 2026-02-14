@@ -12,8 +12,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: "Recipe Ganntifier",
-  description: "Turn any recipe into a Gannt chart",
+  title: "Recipe Checklist",
+  description: "Turn any recipe into an interactive cooking checklist",
 };
 
 export default function RootLayout({ children }) {

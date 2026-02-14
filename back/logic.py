@@ -1,6 +1,5 @@
 import dataclasses
 import datetime
-import json
 import re
 from collections import defaultdict
 
@@ -12,13 +11,12 @@ from bs4 import BeautifulSoup
 from plotly.graph_objs import Figure
 from pydantic import BaseModel, Field
 
-from environment import AZURE_OPENAI_API_KEY, AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_DEPLOYMENT
+from environment import OPENAI_API_KEY
 
-OPENAI_CLIENT = openai.AzureOpenAI(
-    api_key=AZURE_OPENAI_API_KEY,
-    api_version="2025-04-01-preview",
-    azure_endpoint=AZURE_OPENAI_ENDPOINT,
+OPENAI_CLIENT = openai.OpenAI(
+    api_key=OPENAI_API_KEY,
 )
+MODEL="gpt-4.1-mini"
 
 prompt_extract_recipe_content = """
 I will provide you with the full text of a cooking website page.
@@ -56,6 +54,7 @@ Your goal is to represent this recipe as a dependency graph, where each edge rep
 The output will be:
 - A list of steps, each with a unique id, a simple description and an estimated time in minutes
 - A list of edges that determines the dependencies between steps 
+Whenever an explicit duration is given (e.g. 'boil the vegetables for 3 minutes), this must be used as the duration.
 
 Answer in JSON format.
 
@@ -68,7 +67,7 @@ Battre les jaunes d'œufs en y ajoutant 1 pincée de sel, 2 pincées de poivre e
 
 Remplir une grande casserole d'eau et la faire chauffer avec deux pincées de gros sel.
 
-Pendant ce temps, couper la pancetta en lamelles grossières et les faire dorer dans une poêle avec 1 cuillère à soupe d'huile d'olive.
+Pendant ce temps, couper la pancetta en lamelles grossières et les faire dorer dans une poêle avec 1 cuillère à soupe d'huile d'olive pendant 5 minutes.
 
 Quand l’eau dans la casserole commence à bouillir mettez vos pâtes.
 
@@ -87,7 +86,7 @@ Output:
     "steps": [
         {{"id": 1, "name": "Battre les jaunes d'oeufs et ajouter du sel et du parmesan", "duration": 3}},
         {{"id": 2, "name": "Faire bouillir une grande casserole d'eau", "duration": 2}},
-        {{"id": 3, "name": "Couper la pancetta et la cuire", "duration": 5}},
+        {{"id": 3, "name": "Couper la pancetta et la cuire pendant 5 minutes", "duration": 5}},
         {{"id": 4, "name": "Cuire les pâtes quand l'eau bout", "duration": 10}},
         {{"id": 5, "name": "Réserver la pancetta au chaud", "duration": 1}},
         {{"id": 6, "name": "Égoutter les pâtes et les mettre dans la poêle", "duration": 2}},
@@ -138,7 +137,7 @@ def extract_recipe(url: str) -> str:
                 "content": prompt_extract_recipe_content.format(text=website_text),
             }
         ],
-        model=AZURE_OPENAI_DEPLOYMENT,
+        model=MODEL,
     )
     return chat_completion.choices[0].message.content
 
@@ -151,7 +150,7 @@ def generate_dependency_graph(recipe_string: str) -> str:
                 "content": prompt_recipe_to_graph.format(recipe=recipe_string),
             }
         ],
-        model=AZURE_OPENAI_DEPLOYMENT,
+        model=MODEL,
         response_format={"type": "json_object"},
     )
     return chat_completion.choices[0].message.content

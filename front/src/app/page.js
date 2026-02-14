@@ -2,40 +2,18 @@
 
 import styles from "./page.module.css";
 import React from "react";
-import { Chart } from "react-google-charts";
 
 export default function Home() {
   const [inputValue, setInputValue] = React.useState("");
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState("");
-  const [ganntData, setGanntData] = React.useState([]);
-
-  const ganntColumns = [
-    { type: "string", label: "Task ID" },
-    { type: "string", label: "Task Name" },
-    { type: "date", label: "Start Date" },
-    { type: "date", label: "End Date" },
-    { type: "number", label: "Duration" },
-    { type: "number", label: "Percent Complete" },
-    { type: "string", label: "Dependencies" },
-  ];
-
-  const ganntOptions = {
-    height: 1000,
-    gantt: {
-      defaultStartDateMillis: new Date("2000-01-01T00:00:00.000Z"),
-    },
-  };
-
-  const ganntFormattedData = ganntData.map((step) => [
-    step.step_id,
-    step.step_name,
-    null,
-    null,
-    step.duration_minute * 1000 * 60,
-    100,
-    step.dependencies.join(","),
-  ]);
+  const [steps, setSteps] = React.useState([]);
+  const [completedSteps, setCompletedSteps] = React.useState(new Set());
+  const [expandedSections, setExpandedSections] = React.useState({
+    ready: true,
+    blocked: false,
+    completed: false,
+  });
 
   const baseUrl =
     process.env.NODE_ENV === "production"
@@ -46,7 +24,7 @@ export default function Home() {
     setInputValue(e.target.value);
   };
 
-  const handleDownload = async () => {
+  const handleGenerate = async () => {
     if (!inputValue) {
       setError("Please provide a URL");
       return;
@@ -54,6 +32,7 @@ export default function Home() {
 
     setError("");
     setLoading(true);
+    setCompletedSteps(new Set());
 
     try {
       const response = await fetch(`${baseUrl}/ganntify_recipe_data`, {
@@ -65,11 +44,11 @@ export default function Home() {
       });
 
       if (!response.ok) {
-        throw new Error("Failed getting the graph");
+        throw new Error("Failed getting the recipe steps");
       }
 
       const data = await response.json();
-      setGanntData(data.planned_steps);
+      setSteps(data.planned_steps);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -77,10 +56,64 @@ export default function Home() {
     }
   };
 
+  const toggleStep = (stepId) => {
+    setCompletedSteps((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(stepId)) {
+        newSet.delete(stepId);
+      } else {
+        newSet.add(stepId);
+      }
+      return newSet;
+    });
+  };
+
+  const toggleSection = (section) => {
+    setExpandedSections((prev) => ({
+      ...prev,
+      [section]: !prev[section],
+    }));
+  };
+
+  // Categorize steps
+  const readySteps = steps.filter(
+    (step) =>
+      !completedSteps.has(step.step_id) &&
+      step.dependencies.every((depId) => completedSteps.has(depId))
+  );
+
+  const blockedSteps = steps.filter(
+    (step) =>
+      !completedSteps.has(step.step_id) &&
+      !step.dependencies.every((depId) => completedSteps.has(depId))
+  );
+
+  const completedStepsList = steps.filter((step) =>
+    completedSteps.has(step.step_id)
+  );
+
+  // Helper to get step name by ID
+  const getStepName = (stepId) => {
+    const step = steps.find((s) => s.step_id === stepId);
+    return step ? step.step_name : stepId;
+  };
+
+  // Get blocking dependencies for a step
+  const getBlockingDeps = (step) => {
+    return step.dependencies.filter((depId) => !completedSteps.has(depId));
+  };
+
+  const formatDuration = (minutes) => {
+    if (minutes < 60) return `${minutes} min`;
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return mins > 0 ? `${hours}h ${mins}min` : `${hours}h`;
+  };
+
   return (
     <div className={styles.appContainer}>
       <header className={styles.appHeader}>
-        <h1>Recipe Ganntifier</h1>
+        <h1>Recipe Checklist</h1>
       </header>
       <div className={styles.inputContainer}>
         <input
@@ -91,24 +124,156 @@ export default function Home() {
           className={styles.inputField}
         />
         <button
-          onClick={handleDownload}
+          onClick={handleGenerate}
           disabled={loading}
           className={styles.submitButton}
         >
-          {loading ? "Generating..." : "Generate Gannt Chart"}
+          {loading ? "Loading..." : "Load Recipe"}
         </button>
       </div>
       {error && <p className={styles.errorMessage}>{error}</p>}
-      {ganntData.length ? (
-        <div className={styles.ganntContainer}>
-          <Chart
-            chartType="Gantt"
-            width="100%"
-            data={[ganntColumns, ...ganntFormattedData]}
-            options={ganntOptions}
-          />
+
+      {steps.length > 0 && (
+        <div className={styles.checklistContainer}>
+          {/* Progress indicator */}
+          <div className={styles.progressBar}>
+            <div
+              className={styles.progressFill}
+              style={{
+                width: `${(completedSteps.size / steps.length) * 100}%`,
+              }}
+            />
+          </div>
+          <p className={styles.progressText}>
+            {completedSteps.size} of {steps.length} steps completed
+          </p>
+
+          {/* Ready Steps - Always visible when there are items */}
+          {readySteps.length > 0 && (
+            <section className={styles.section}>
+              <button
+                className={styles.sectionHeader}
+                onClick={() => toggleSection("ready")}
+              >
+                <span className={styles.sectionTitle}>
+                  Next Steps ({readySteps.length})
+                </span>
+                <span className={styles.chevron}>
+                  {expandedSections.ready ? "▼" : "▶"}
+                </span>
+              </button>
+              {expandedSections.ready && (
+                <ul className={styles.stepList}>
+                  {readySteps.map((step) => (
+                    <li key={step.step_id} className={styles.stepItem}>
+                      <label className={styles.stepLabel}>
+                        <input
+                          type="checkbox"
+                          checked={false}
+                          onChange={() => toggleStep(step.step_id)}
+                          className={styles.checkbox}
+                        />
+                        <span className={styles.stepName}>{step.step_name}</span>
+                        <span className={styles.duration}>
+                          {formatDuration(step.duration_minute)}
+                        </span>
+                      </label>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          )}
+
+          {/* Blocked Steps */}
+          {blockedSteps.length > 0 && (
+            <section className={styles.section}>
+              <button
+                className={styles.sectionHeader}
+                onClick={() => toggleSection("blocked")}
+              >
+                <span className={styles.sectionTitle}>
+                  Waiting On... ({blockedSteps.length})
+                </span>
+                <span className={styles.chevron}>
+                  {expandedSections.blocked ? "▼" : "▶"}
+                </span>
+              </button>
+              {expandedSections.blocked && (
+                <ul className={styles.stepList}>
+                  {blockedSteps.map((step) => (
+                    <li
+                      key={step.step_id}
+                      className={`${styles.stepItem} ${styles.blockedItem}`}
+                    >
+                      <div className={styles.blockedStep}>
+                        <span className={styles.stepName}>{step.step_name}</span>
+                        <span className={styles.duration}>
+                          {formatDuration(step.duration_minute)}
+                        </span>
+                      </div>
+                      <div className={styles.blockingDeps}>
+                        Waiting for:{" "}
+                        {getBlockingDeps(step)
+                          .map((depId) => getStepName(depId))
+                          .join(", ")}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          )}
+
+          {/* Completed Steps */}
+          {completedStepsList.length > 0 && (
+            <section className={styles.section}>
+              <button
+                className={styles.sectionHeader}
+                onClick={() => toggleSection("completed")}
+              >
+                <span className={styles.sectionTitle}>
+                  Completed ({completedStepsList.length})
+                </span>
+                <span className={styles.chevron}>
+                  {expandedSections.completed ? "▼" : "▶"}
+                </span>
+              </button>
+              {expandedSections.completed && (
+                <ul className={styles.stepList}>
+                  {completedStepsList.map((step) => (
+                    <li
+                      key={step.step_id}
+                      className={`${styles.stepItem} ${styles.completedItem}`}
+                    >
+                      <label className={styles.stepLabel}>
+                        <input
+                          type="checkbox"
+                          checked={true}
+                          onChange={() => toggleStep(step.step_id)}
+                          className={styles.checkbox}
+                        />
+                        <span
+                          className={`${styles.stepName} ${styles.completedText}`}
+                        >
+                          {step.step_name}
+                        </span>
+                      </label>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          )}
+
+          {/* All done message */}
+          {readySteps.length === 0 && blockedSteps.length === 0 && (
+            <div className={styles.allDone}>
+              All steps completed! Enjoy your meal!
+            </div>
+          )}
         </div>
-      ) : null}
+      )}
     </div>
   );
 }
