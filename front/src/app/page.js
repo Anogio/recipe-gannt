@@ -36,6 +36,11 @@ export default function Home() {
   });
   const [loadingMessageIndex, setLoadingMessageIndex] = React.useState(0);
 
+  // Timer state: { [stepId]: { remainingSeconds, isRunning } }
+  const [timers, setTimers] = React.useState({});
+  // Steps where timer has completed (for highlighting)
+  const [timerCompleted, setTimerCompleted] = React.useState(new Set());
+
   const baseUrl =
     process.env.NODE_ENV === "production"
       ? "https://recipe-gannt.onrender.com"
@@ -53,6 +58,37 @@ export default function Home() {
     }, 5000);
     return () => clearInterval(interval);
   }, [loading]);
+
+  // Timer countdown effect
+  React.useEffect(() => {
+    const runningTimers = Object.entries(timers).filter(
+      ([, timer]) => timer.isRunning && timer.remainingSeconds > 0
+    );
+
+    if (runningTimers.length === 0) return;
+
+    const interval = setInterval(() => {
+      setTimers((prev) => {
+        const updated = { ...prev };
+        for (const [stepId, timer] of Object.entries(updated)) {
+          if (timer.isRunning && timer.remainingSeconds > 0) {
+            updated[stepId] = {
+              ...timer,
+              remainingSeconds: timer.remainingSeconds - 1,
+            };
+            // Mark as completed when reaching 0
+            if (timer.remainingSeconds - 1 === 0) {
+              updated[stepId].isRunning = false;
+              setTimerCompleted((prev) => new Set(prev).add(stepId));
+            }
+          }
+        }
+        return updated;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [timers]);
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) {
@@ -195,11 +231,48 @@ export default function Home() {
     return step.dependencies.filter((depId) => !completedSteps.has(depId));
   };
 
-  const formatDuration = (minutes) => {
-    if (minutes < 60) return `${minutes} min`;
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    return mins > 0 ? `${hours}h ${mins}min` : `${hours}h`;
+  // Format seconds to mm:ss display
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  // Start or resume a timer
+  const startTimer = (stepId, durationMinutes) => {
+    setTimerCompleted((prev) => {
+      const newSet = new Set(prev);
+      newSet.delete(stepId);
+      return newSet;
+    });
+    setTimers((prev) => ({
+      ...prev,
+      [stepId]: {
+        remainingSeconds: prev[stepId]?.remainingSeconds ?? durationMinutes * 60,
+        isRunning: true,
+      },
+    }));
+  };
+
+  // Pause a timer
+  const pauseTimer = (stepId) => {
+    setTimers((prev) => ({
+      ...prev,
+      [stepId]: { ...prev[stepId], isRunning: false },
+    }));
+  };
+
+  // Reset a timer
+  const resetTimer = (stepId, durationMinutes) => {
+    setTimerCompleted((prev) => {
+      const newSet = new Set(prev);
+      newSet.delete(stepId);
+      return newSet;
+    });
+    setTimers((prev) => ({
+      ...prev,
+      [stepId]: { remainingSeconds: durationMinutes * 60, isRunning: false },
+    }));
   };
 
   const handleKeyPress = (e) => {
@@ -264,7 +337,7 @@ export default function Home() {
     return (
       <div className={styles.appContainer}>
         <header className={styles.appHeader}>
-          <h1>Recipe Checklist</h1>
+          <h1>Flow Recipe</h1>
         </header>
 
         <div className={styles.selectedRecipe}>
@@ -306,9 +379,14 @@ export default function Home() {
                 className={styles.sectionHeader}
                 onClick={() => toggleSection("ready")}
               >
-                <span className={styles.sectionTitle}>
-                  Next Steps ({readySteps.length})
-                </span>
+                <div className={styles.sectionTitleContainer}>
+                  <span className={styles.sectionTitle}>
+                    Now ({readySteps.length})
+                  </span>
+                  <span className={styles.sectionSubtitle}>
+                    You can do these steps now. The next steps will appear as you progress in the recipe
+                  </span>
+                </div>
                 <span className={styles.chevron}>
                   {expandedSections.ready ? "▼" : "▶"}
                 </span>
@@ -316,7 +394,10 @@ export default function Home() {
               {expandedSections.ready && (
                 <ul className={styles.stepList}>
                   {readySteps.map((step) => (
-                    <li key={step.step_id} className={styles.stepItem}>
+                    <li
+                      key={step.step_id}
+                      className={`${styles.stepItem} ${timerCompleted.has(step.step_id) ? styles.timerDone : ''}`}
+                    >
                       <label className={styles.stepLabel}>
                         <input
                           type="checkbox"
@@ -331,10 +412,48 @@ export default function Home() {
                               {step.ingredients.join(", ")}
                             </span>
                           )}
+                          {step.duration_minute && (
+                            <div className={styles.timerContainer}>
+                              <div className={styles.timerBar}>
+                                <div
+                                  className={styles.timerFill}
+                                  style={{
+                                    width: `${((timers[step.step_id]?.remainingSeconds ?? step.duration_minute * 60) / (step.duration_minute * 60)) * 100}%`,
+                                  }}
+                                />
+                              </div>
+                              <span className={styles.timerText}>
+                                {formatTime(timers[step.step_id]?.remainingSeconds ?? step.duration_minute * 60)}
+                              </span>
+                              {timers[step.step_id]?.isRunning ? (
+                                <button
+                                  className={styles.timerButton}
+                                  onClick={(e) => { e.preventDefault(); pauseTimer(step.step_id); }}
+                                  aria-label="Pause timer"
+                                >
+                                  ❚❚
+                                </button>
+                              ) : (
+                                <button
+                                  className={styles.timerButton}
+                                  onClick={(e) => { e.preventDefault(); startTimer(step.step_id, step.duration_minute); }}
+                                  aria-label="Start timer"
+                                >
+                                  ▶
+                                </button>
+                              )}
+                              {timers[step.step_id] && (
+                                <button
+                                  className={styles.timerResetButton}
+                                  onClick={(e) => { e.preventDefault(); resetTimer(step.step_id, step.duration_minute); }}
+                                  aria-label="Reset timer"
+                                >
+                                  ↺
+                                </button>
+                              )}
+                            </div>
+                          )}
                         </div>
-                        <span className={styles.duration}>
-                          {formatDuration(step.duration_minute)}
-                        </span>
                       </label>
                     </li>
                   ))}
@@ -349,9 +468,14 @@ export default function Home() {
                 className={styles.sectionHeader}
                 onClick={() => toggleSection("blocked")}
               >
-                <span className={styles.sectionTitle}>
-                  Waiting On... ({blockedSteps.length})
-                </span>
+                <div className={styles.sectionTitleContainer}>
+                  <span className={styles.sectionTitle}>
+                    Next up ({blockedSteps.length})
+                  </span>
+                  <span className={styles.sectionSubtitle}>
+                    You still need to complete other steps to do these
+                  </span>
+                </div>
                 <span className={styles.chevron}>
                   {expandedSections.blocked ? "▼" : "▶"}
                 </span>
@@ -372,9 +496,6 @@ export default function Home() {
                             </span>
                           )}
                         </div>
-                        <span className={styles.duration}>
-                          {formatDuration(step.duration_minute)}
-                        </span>
                       </div>
                       <div className={styles.blockingDeps}>
                         Waiting for:{" "}
@@ -451,7 +572,7 @@ export default function Home() {
     return (
       <div className={styles.appContainer}>
         <header className={styles.appHeader}>
-          <h1>Recipe Checklist</h1>
+          <h1>Flow Recipe</h1>
         </header>
         <div className={styles.loadingContainer}>
           <p className={styles.loadingText}>{LOADING_MESSAGES[loadingMessageIndex]}</p>
@@ -464,7 +585,7 @@ export default function Home() {
   return (
     <div className={styles.appContainer}>
       <header className={styles.appHeader}>
-        <h1>Recipe Checklist</h1>
+        <h1>Flow Recipe</h1>
         <p className={styles.subtitle}>Turn any recipe into a smart step-by-step guide</p>
       </header>
 
@@ -502,7 +623,7 @@ export default function Home() {
               className={styles.submitButton}
               aria-label="Search"
             >
-              {searchLoading ? "..." : "→"}
+              {searchLoading ? <span className={styles.spinner} /> : "→"}
             </button>
           </div>
 
@@ -567,7 +688,7 @@ export default function Home() {
             className={styles.submitButton}
             aria-label="Load recipe"
           >
-            {loading ? "..." : "→"}
+            {loading ? <span className={styles.spinner} /> : "→"}
           </button>
         </div>
       )}

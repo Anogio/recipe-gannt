@@ -12,7 +12,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: "Recipe Checklist",
+  title: "Flow Recipe",
   description: "Turn any recipe into an interactive cooking checklist",
 };
 
