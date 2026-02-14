@@ -31,7 +31,7 @@ class RecipeUrl(BaseModel):
 class PlannedStep(BaseModel):
     step_id: str
     step_name: str
-    duration_minute: int
+    duration_minute: int | None
     dependencies: list[str]
     ingredients: list[str]
 

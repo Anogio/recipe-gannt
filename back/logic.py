@@ -54,10 +54,9 @@ The output will be:
 - A list of steps, each with:
   - a unique id
   - a simple description (name)
-  - an estimated time in minutes (duration)
+  - a duration in minutes only if explicitly mentioned in the recipe (e.g. "cook for 10 minutes"). If no duration is stated, set to null. If duration is variable (2 to 3 minutes), take the longest interval.
   - a list of ingredients used in this step (ingredients). Include quantities when relevant (e.g. "400g of tomatoes"), but some ingredients don't need quantities (e.g. "salt", "pepper", "olive oil").
 - A list of edges that determines the dependencies between steps
-Whenever an explicit duration is given (e.g. 'boil the vegetables for 3 minutes), this must be used as the duration.
 
 Answer in JSON format.
 
@@ -91,13 +90,13 @@ ___
 Output:
 {{
     "steps": [
-        {{"id": 1, "name": "Battre les jaunes d'oeufs et ajouter du sel et du parmesan", "duration": 3, "ingredients": ["4 jaunes d'oeufs", "40g de parmesan râpé", "sel", "poivre"]}},
-        {{"id": 2, "name": "Faire bouillir une grande casserole d'eau", "duration": 2, "ingredients": ["sel"]}},
+        {{"id": 1, "name": "Battre les jaunes d'oeufs et ajouter du sel et du parmesan", "duration": null, "ingredients": ["4 jaunes d'oeufs", "40g de parmesan râpé", "sel", "poivre"]}},
+        {{"id": 2, "name": "Faire bouillir une grande casserole d'eau", "duration": null, "ingredients": ["sel"]}},
         {{"id": 3, "name": "Couper la pancetta et la cuire pendant 5 minutes", "duration": 5, "ingredients": ["200g de pancetta", "huile d'olive"]}},
-        {{"id": 4, "name": "Cuire les pâtes quand l'eau bout", "duration": 10, "ingredients": ["400g de spaghetti"]}},
-        {{"id": 5, "name": "Réserver la pancetta au chaud", "duration": 1, "ingredients": []}},
-        {{"id": 6, "name": "Égoutter les pâtes et les mettre dans la poêle", "duration": 2, "ingredients": []}},
-        {{"id": 7, "name": "Mélanger le tout avec la préparation de jaunes d'oeufs, saler, poivrer", "duration": 3, "ingredients": ["poivre"]}}
+        {{"id": 4, "name": "Cuire les pâtes quand l'eau bout", "duration": null, "ingredients": ["400g de spaghetti"]}},
+        {{"id": 5, "name": "Réserver la pancetta au chaud", "duration": null, "ingredients": []}},
+        {{"id": 6, "name": "Égoutter les pâtes et les mettre dans la poêle", "duration": null, "ingredients": []}},
+        {{"id": 7, "name": "Mélanger le tout avec la préparation de jaunes d'oeufs, saler, poivrer", "duration": null, "ingredients": ["poivre"]}}
     ],
     "dependencies": [{{"do": 1, "before":  7}}, {{"do": 2, "before": 4}}, {{"do": 3, "before": 5}}, {{"do": 4, "before": 6}},\
      {{"do": 5, "before": 6}}, {{"do": 6, "before": 7}}]
@@ -114,7 +113,7 @@ Here are the ingredients:
 class Step(BaseModel):
     step_id: int = Field(alias="id")
     name: str
-    duration: int
+    duration: int | None = None
     ingredients: list[str] = []
 
 
@@ -267,14 +266,14 @@ def generate_dependency_graph(recipe_string: str, ingredients: str) -> str:
 class PlannedStep:
     name: str
     start_time: int
-    duration_minutes: int
+    duration_minutes: int | None
     step_id: int
     dependencies: list[int]
     ingredients: list[str]
 
     @property
     def end_time(self) -> int:
-        return self.start_time + self.duration_minutes
+        return self.start_time + (self.duration_minutes or 0)
 
     @property
     def start_date(self) -> datetime.datetime:
