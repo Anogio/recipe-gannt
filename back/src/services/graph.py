@@ -118,7 +118,9 @@ def to_time(minute_offset: int) -> datetime.datetime:
 async def ganntify_recipe(url: str) -> tuple[list[PlannedStep], str]:
     """Process a recipe URL into planned steps with timing."""
     extracted = await extract_recipe(url)
-    graph_string = await generate_dependency_graph(extracted.recipe, extracted.ingredients)
+    graph_string = await generate_dependency_graph(
+        extracted.recipe, extracted.ingredients
+    )
     recipe_graph = parse_recipe_graph(graph_string)
     planned_steps = plan_steps(recipe_graph)
     return planned_steps, extracted.title
