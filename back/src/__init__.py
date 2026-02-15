@@ -1,0 +1,1 @@
+"""Recipe Gantt backend application."""

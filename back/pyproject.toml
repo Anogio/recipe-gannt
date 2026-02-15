@@ -2,8 +2,9 @@
 requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
-[tool.setuptools]
-py-modules = []
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src*"]
 
 [project]
 name = "recipe-gantt-backend"
@@ -67,7 +68,7 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["ARG"]  # Unused arguments are common in test fixtures
-"main.py" = ["ARG001"]  # request parameter required by slowapi rate limiter
+"src/app.py" = ["ARG001"]  # request parameter required by slowapi rate limiter
 "alembic/env.py" = ["E402"]  # imports after load_dotenv() is intentional
 
 [tool.pytest.ini_options]

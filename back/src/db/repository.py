@@ -6,7 +6,7 @@ from datetime import UTC, datetime
 from sqlalchemy import desc
 from sqlalchemy.orm import Session
 
-from models import RecipeHistory
+from src.db.models import RecipeHistory
 
 logger = logging.getLogger(__name__)
 

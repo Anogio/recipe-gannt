@@ -1,3 +1,5 @@
+"""Environment configuration and secrets."""
+
 import os
 
 import dotenv

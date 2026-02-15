@@ -6,7 +6,7 @@ from sqlalchemy import DateTime, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
-from database import Base
+from src.db.database import Base
 
 
 class RecipeHistory(Base):

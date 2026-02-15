@@ -4,7 +4,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from repository import RecipeHistoryRepository
+from src.db.repository import RecipeHistoryRepository
 
 
 @pytest.fixture

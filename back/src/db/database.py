@@ -89,8 +89,9 @@ def run_migrations():
 
     from alembic import command
 
-    # Get the directory where this file is located
-    base_path = os.path.dirname(os.path.abspath(__file__))
+    # Get the directory where this file is located (src/db)
+    # Go up two levels to get to back/
+    base_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     alembic_cfg = Config(os.path.join(base_path, "alembic.ini"))
     alembic_cfg.set_main_option("script_location", os.path.join(base_path, "alembic"))
 

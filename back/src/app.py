@@ -1,3 +1,5 @@
+"""FastAPI application for Recipe Gantt."""
+
 import logging
 from contextlib import asynccontextmanager
 from typing import Annotated
@@ -10,9 +12,10 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 from sqlalchemy.orm import Session
 
-from database import check_database_connection, get_db, run_migrations
-from logic import ganntify_recipe, search_recipes
-from repository import RecipeHistoryRepository
+from src.db.database import check_database_connection, get_db, run_migrations
+from src.db.repository import RecipeHistoryRepository
+from src.services.graph import ganntify_recipe
+from src.services.search import search_recipes
 
 logger = logging.getLogger(__name__)
 

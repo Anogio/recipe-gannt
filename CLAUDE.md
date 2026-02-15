@@ -11,6 +11,41 @@ A web application that turns recipes into interactive step-by-step cooking check
 
 The backend uses UV for Python dependency management. The virtual environment is located in `back/.venv`.
 
+### Directory Structure
+
+```
+back/
+├── src/
+│   ├── __init__.py
+│   ├── app.py                   # FastAPI application entry point
+│   ├── config/
+│   │   ├── __init__.py
+│   │   └── environment.py       # Environment variables
+│   ├── db/
+│   │   ├── __init__.py
+│   │   ├── database.py          # DB engine, session, migrations
+│   │   ├── models.py            # SQLAlchemy models
+│   │   └── repository.py        # Repository pattern
+│   └── services/
+│       ├── __init__.py
+│       ├── schemas.py           # Pydantic models
+│       ├── scraping.py          # Web scraping utilities
+│       ├── search.py            # Recipe search via DuckDuckGo
+│       ├── ai_service.py        # OpenAI integration
+│       └── graph.py             # Graph processing and planning
+├── tests/
+│   ├── conftest.py              # Test fixtures
+│   ├── test_api.py              # API endpoint tests
+│   ├── test_graph.py            # Graph processing tests
+│   ├── test_scraping.py         # Scraping tests
+│   ├── test_search.py           # Search tests
+│   └── test_repository.py       # Database tests
+├── alembic/                     # Database migrations
+├── pyproject.toml               # Dependencies and config
+├── Makefile                     # Development commands
+└── alembic.ini                  # Alembic configuration
+```
+
 ### Commands (from `back/` directory)
 
 ```bash
@@ -36,16 +71,6 @@ make migrate-down # Rollback one migration
 make migrate-new  # Create a new migration (prompts for message)
 make migrate-history  # Show migration history
 ```
-
-### Key files
-
-- `main.py` - FastAPI application entry point
-- `logic.py` - Core business logic
-- `database.py` - Database connection and migration management
-- `pyproject.toml` - Dependencies and project config
-- `alembic/` - Database migrations
-- `.env` - Environment variables (not in git)
-- `.env.example` - Example environment variables
 
 ### Database Configuration
 

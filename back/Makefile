@@ -1,5 +1,5 @@
 run:
-	uv run uvicorn main:app --reload
+	uv run uvicorn src.app:app --reload
 
 format:
 	uv run black . && uv run isort . && uv run ruff check --fix .
@@ -20,7 +20,7 @@ test:
 	uv run pytest -v
 
 test-cov:
-	uv run pytest -v --cov=. --cov-report=term-missing
+	uv run pytest -v --cov=src --cov-report=term-missing
 
 # Database commands
 db-up:

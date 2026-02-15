@@ -1,11 +1,11 @@
-"""Tests for main.py - FastAPI endpoints."""
+"""Tests for app.py - FastAPI endpoints."""
 
 from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
 
-from main import app
+from src.app import app
 
 
 @pytest.fixture
@@ -40,7 +40,7 @@ class TestRootEndpoint:
 class TestSearchRecipesEndpoint:
     """Tests for GET /search_recipes endpoint."""
 
-    @patch("main.search_recipes")
+    @patch("src.app.search_recipes")
     def test_search_returns_results(self, mock_search, client):
         """Should return search results."""
         mock_search.return_value = {
@@ -62,7 +62,7 @@ class TestSearchRecipesEndpoint:
         assert data["results"][0]["title"] == "Pasta Recipe"
         assert data["has_more"] is False
 
-    @patch("main.search_recipes")
+    @patch("src.app.search_recipes")
     def test_search_with_pagination(self, mock_search, client):
         """Should pass page parameter to search."""
         mock_search.return_value = {"results": [], "has_more": True}
@@ -72,7 +72,7 @@ class TestSearchRecipesEndpoint:
         assert response.status_code == 200
         mock_search.assert_called_once_with("pasta", page=2)
 
-    @patch("main.search_recipes")
+    @patch("src.app.search_recipes")
     def test_search_empty_results(self, mock_search, client):
         """Should handle empty results."""
         mock_search.return_value = {"results": [], "has_more": False}
@@ -92,8 +92,8 @@ class TestSearchRecipesEndpoint:
 class TestPopularRecipesEndpoint:
     """Tests for GET /popular_recipes endpoint."""
 
-    @patch("main.RecipeHistoryRepository")
-    @patch("main.get_db")
+    @patch("src.app.RecipeHistoryRepository")
+    @patch("src.app.get_db")
     def test_returns_popular_recipes(self, mock_get_db, mock_repo_class, client):
         """Should return popular recipes from database."""
         mock_db = MagicMock()
@@ -114,8 +114,8 @@ class TestPopularRecipesEndpoint:
         assert len(data["recipes"]) == 1
         assert data["recipes"][0]["title"] == "Popular Recipe"
 
-    @patch("main.RecipeHistoryRepository")
-    @patch("main.get_db")
+    @patch("src.app.RecipeHistoryRepository")
+    @patch("src.app.get_db")
     def test_returns_empty_when_no_history(self, mock_get_db, mock_repo_class, client):
         """Should return empty list when no history."""
         mock_db = MagicMock()
@@ -134,9 +134,9 @@ class TestPopularRecipesEndpoint:
 class TestGanntifyRecipeDataEndpoint:
     """Tests for POST /ganntify_recipe_data endpoint."""
 
-    @patch("main.RecipeHistoryRepository")
-    @patch("main.get_db")
-    @patch("main.ganntify_recipe")
+    @patch("src.app.RecipeHistoryRepository")
+    @patch("src.app.get_db")
+    @patch("src.app.ganntify_recipe")
     def test_returns_planned_steps_from_processing(
         self, mock_ganntify, mock_get_db, mock_repo_class, client
     ):
@@ -170,9 +170,9 @@ class TestGanntifyRecipeDataEndpoint:
         assert data["planned_steps"][0]["ingredients"] == ["water", "salt"]
         mock_repo.upsert.assert_called_once()
 
-    @patch("main.RecipeHistoryRepository")
-    @patch("main.get_db")
-    @patch("main.ganntify_recipe")
+    @patch("src.app.RecipeHistoryRepository")
+    @patch("src.app.get_db")
+    @patch("src.app.ganntify_recipe")
     def test_returns_cached_steps(
         self, mock_ganntify, mock_get_db, mock_repo_class, client
     ):
@@ -205,9 +205,9 @@ class TestGanntifyRecipeDataEndpoint:
         mock_ganntify.assert_not_called()  # Should not process
         mock_repo.touch.assert_called_once()  # Should update timestamp
 
-    @patch("main.RecipeHistoryRepository")
-    @patch("main.get_db")
-    @patch("main.ganntify_recipe")
+    @patch("src.app.RecipeHistoryRepository")
+    @patch("src.app.get_db")
+    @patch("src.app.ganntify_recipe")
     def test_saves_to_database(
         self, mock_ganntify, mock_get_db, mock_repo_class, client
     ):
@@ -236,9 +236,9 @@ class TestGanntifyRecipeDataEndpoint:
         assert call_kwargs["title"] == "Custom Title"
         assert call_kwargs["snippet"] == "Custom snippet"
 
-    @patch("main.RecipeHistoryRepository")
-    @patch("main.get_db")
-    @patch("main.ganntify_recipe")
+    @patch("src.app.RecipeHistoryRepository")
+    @patch("src.app.get_db")
+    @patch("src.app.ganntify_recipe")
     def test_uses_extracted_title_as_fallback(
         self, mock_ganntify, mock_get_db, mock_repo_class, client
     ):
@@ -260,9 +260,9 @@ class TestGanntifyRecipeDataEndpoint:
         call_kwargs = mock_repo.upsert.call_args[1]
         assert call_kwargs["title"] == "Extracted Title"
 
-    @patch("main.RecipeHistoryRepository")
-    @patch("main.get_db")
-    @patch("main.ganntify_recipe")
+    @patch("src.app.RecipeHistoryRepository")
+    @patch("src.app.get_db")
+    @patch("src.app.ganntify_recipe")
     def test_uses_default_title_when_no_title(
         self, mock_ganntify, mock_get_db, mock_repo_class, client
     ):
@@ -343,9 +343,9 @@ class TestInputValidation:
         response = client.get("/search_recipes?query=pasta&page=101")
         assert response.status_code == 422
 
-    @patch("main.RecipeHistoryRepository")
-    @patch("main.get_db")
-    @patch("main.ganntify_recipe")
+    @patch("src.app.RecipeHistoryRepository")
+    @patch("src.app.get_db")
+    @patch("src.app.ganntify_recipe")
     def test_ganntify_error_returns_500(
         self, mock_ganntify, mock_get_db, mock_repo_class, client
     ):
@@ -379,9 +379,9 @@ class TestModels:
         )
         assert response.status_code == 422
 
-    @patch("main.RecipeHistoryRepository")
-    @patch("main.get_db")
-    @patch("main.ganntify_recipe")
+    @patch("src.app.RecipeHistoryRepository")
+    @patch("src.app.get_db")
+    @patch("src.app.ganntify_recipe")
     def test_recipe_url_accepts_http(
         self, mock_ganntify, mock_get_db, mock_repo_class, client
     ):
@@ -401,9 +401,9 @@ class TestModels:
         )
         assert response.status_code == 200
 
-    @patch("main.RecipeHistoryRepository")
-    @patch("main.get_db")
-    @patch("main.ganntify_recipe")
+    @patch("src.app.RecipeHistoryRepository")
+    @patch("src.app.get_db")
+    @patch("src.app.ganntify_recipe")
     def test_recipe_url_accepts_https(
         self, mock_ganntify, mock_get_db, mock_repo_class, client
     ):
