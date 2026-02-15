@@ -21,3 +21,29 @@ test:
 
 test-cov:
 	uv run pytest -v --cov=. --cov-report=term-missing
+
+# Database commands
+db-up:
+	docker compose up -d
+
+db-down:
+	docker compose down
+
+db-logs:
+	docker compose logs -f db
+
+db-reset:
+	docker compose down -v && docker compose up -d
+
+# Alembic migration commands
+migrate:
+	uv run alembic upgrade head
+
+migrate-down:
+	uv run alembic downgrade -1
+
+migrate-new:
+	@read -p "Migration message: " msg; uv run alembic revision --autogenerate -m "$$msg"
+
+migrate-history:
+	uv run alembic history

@@ -1,3 +1,5 @@
+import logging
+from contextlib import asynccontextmanager
 from typing import Annotated
 
 from fastapi import FastAPI, HTTPException, Query, Request, Response
@@ -7,11 +9,38 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 
+from database import check_database_connection, run_migrations
 from history import recipe_history
 from logic import ganntify_recipe, search_recipes
 
+logger = logging.getLogger(__name__)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifespan: startup and shutdown events."""
+    # Startup: check database connection and run migrations
+    logger.info("Starting up...")
+    try:
+        logger.info("Checking database connection...")
+        check_database_connection()
+        logger.info("Database connection successful")
+
+        logger.info("Running database migrations...")
+        run_migrations()
+        logger.info("Database migrations complete")
+    except Exception as e:
+        logger.error(f"Database initialization failed: {e}")
+        raise
+
+    yield
+
+    # Shutdown
+    logger.info("Shutting down...")
+
+
 limiter = Limiter(key_func=get_remote_address)
-app = FastAPI()
+app = FastAPI(lifespan=lifespan)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
@@ -74,6 +103,19 @@ class PopularRecipesResponse(BaseModel):
 @app.get("/")
 async def root():
     return {"message": "Hello World"}
+
+
+@app.get("/health")
+async def health():
+    """Health check endpoint that verifies database connectivity."""
+    try:
+        check_database_connection()
+        return {"status": "healthy", "database": "connected"}
+    except Exception as e:
+        raise HTTPException(
+            status_code=503,
+            detail={"status": "unhealthy", "database": str(e)},
+        ) from e
 
 
 @app.get("/search_recipes")

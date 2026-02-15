@@ -5,8 +5,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 from fastapi.testclient import TestClient
 
-from main import app
 from history import RecipeHistoryEntry
+from main import app
 
 
 @pytest.fixture
