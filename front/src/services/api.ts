@@ -7,7 +7,7 @@ import {
 
 const BASE_URL =
   process.env.NODE_ENV === "production"
-    ? "https://recipe-gannt.onrender.com"
+    ? "https://flow-recipe-api.anog.fr"
     : "http://127.0.0.1:8000";
 
 export async function searchRecipes(
