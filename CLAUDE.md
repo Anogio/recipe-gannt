@@ -24,12 +24,45 @@ make test         # Run test suite
 make test-cov     # Run tests with coverage report
 ```
 
+### Database Commands (from `back/` directory)
+
+```bash
+make db-up        # Start local PostgreSQL container
+make db-down      # Stop PostgreSQL container
+make db-logs      # View PostgreSQL container logs
+make db-reset     # Reset database (delete data and restart)
+make migrate      # Run pending Alembic migrations
+make migrate-down # Rollback one migration
+make migrate-new  # Create a new migration (prompts for message)
+make migrate-history  # Show migration history
+```
+
 ### Key files
 
-- `app.py` - FastAPI application entry point
+- `main.py` - FastAPI application entry point
 - `logic.py` - Core business logic
+- `database.py` - Database connection and migration management
 - `pyproject.toml` - Dependencies and project config
+- `alembic/` - Database migrations
 - `.env` - Environment variables (not in git)
+- `.env.example` - Example environment variables
+
+### Database Configuration
+
+The backend uses PostgreSQL with SQLAlchemy and Alembic for migrations.
+
+**Environment variables:**
+- `DATABASE_URL` - Full database connection string (used in production)
+- Or individual components for local development:
+  - `DB_HOST` (default: localhost)
+  - `DB_PORT` (default: 5432)
+  - `DB_USER` (default: postgres)
+  - `DB_PASSWORD` (default: postgres)
+  - `DB_NAME` (default: recipe_gantt)
+
+On startup, the server automatically:
+1. Checks database connectivity
+2. Runs any pending Alembic migrations
 
 ## Frontend
 
@@ -46,6 +79,16 @@ npm run lint    # Run ESLint
 
 ## Development
 
-1. Start backend: `cd back && make run`
-2. Start frontend: `cd front && npm run dev`
-3. Access app at http://localhost:3000
+1. Start database: `cd back && make db-up`
+2. Start backend: `cd back && make run`
+3. Start frontend: `cd front && npm run dev`
+4. Access app at http://localhost:3000
+
+## Deployment
+
+The project is deployed on Railway with:
+- `Recipe Back` - FastAPI backend
+- `Recipe Front` - Next.js frontend
+- `Recipe DB` - PostgreSQL database
+
+Railway auto-deploys on push to master. The backend automatically runs migrations on startup.
