@@ -2,16 +2,17 @@ import logging
 from contextlib import asynccontextmanager
 from typing import Annotated
 
-from fastapi import FastAPI, HTTPException, Query, Request, Response
+from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, HttpUrl, field_validator
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
+from sqlalchemy.orm import Session
 
-from database import check_database_connection, run_migrations
-from history import recipe_history
+from database import check_database_connection, get_db, run_migrations
 from logic import ganntify_recipe, search_recipes
+from repository import RecipeHistoryRepository
 
 logger = logging.getLogger(__name__)
 
@@ -134,9 +135,12 @@ async def search_recipes_api(
 
 @app.get("/popular_recipes")
 @limiter.limit("60/minute")
-async def get_popular_recipes(request: Request) -> PopularRecipesResponse:
+async def get_popular_recipes(
+    request: Request, db: Session = Depends(get_db)
+) -> PopularRecipesResponse:
     """Return the list of recently processed recipes."""
-    entries = recipe_history.get_all()
+    repo = RecipeHistoryRepository(db)
+    entries = repo.get_popular(limit=10)
     return PopularRecipesResponse(
         recipes=[
             SearchResult(title=e.title, url=e.url, snippet=e.snippet) for e in entries
@@ -144,53 +148,53 @@ async def get_popular_recipes(request: Request) -> PopularRecipesResponse:
     )
 
 
-@app.post("/ganntify_recipe")
-@limiter.limit("10/minute")
-async def ganntify_recipe_api(request: Request, recipe_url: RecipeUrl):
-    url = str(recipe_url.recipe_url)
-    try:
-        _, figure, extracted_title = ganntify_recipe(url)
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to process recipe: {str(e)}",
-        ) from e
-
-    # Record to history
-    title = recipe_url.title or extracted_title or "Recipe"
-    snippet = recipe_url.snippet or ""
-    recipe_history.add(title=title, url=url, snippet=snippet)
-
-    img_bytes = figure.to_image(format="png")
-    return Response(content=img_bytes, media_type="image/png")
-
-
 @app.post("/ganntify_recipe_data")
 @limiter.limit("10/minute")
-async def ganntify_recipe_data_api(request: Request, recipe_url: RecipeUrl):
+async def ganntify_recipe_data_api(
+    request: Request, recipe_url: RecipeUrl, db: Session = Depends(get_db)
+):
     url = str(recipe_url.recipe_url)
+    repo = RecipeHistoryRepository(db)
+
+    # Check cache first
+    cached = repo.get_by_url(url)
+    if cached:
+        repo.touch(url)
+        return PlannedSteps(
+            planned_steps=[
+                PlannedStep(
+                    step_id=str(step["step_id"]),
+                    step_name=step["step_name"],
+                    duration_minute=step.get("duration_minute"),
+                    dependencies=step.get("dependencies", []),
+                    ingredients=step.get("ingredients", []),
+                )
+                for step in cached.planned_steps
+            ]
+        )
+
+    # Process recipe
     try:
-        planned_steps, _, extracted_title = ganntify_recipe(url)
+        planned_steps, extracted_title = ganntify_recipe(url)
     except Exception as e:
         raise HTTPException(
             status_code=500,
             detail=f"Failed to process recipe: {str(e)}",
         ) from e
 
-    # Record to history
+    # Store in database
     title = recipe_url.title or extracted_title or "Recipe"
     snippet = recipe_url.snippet or ""
-    recipe_history.add(title=title, url=url, snippet=snippet)
+    steps_data = [
+        {
+            "step_id": str(step.step_id),
+            "step_name": step.name,
+            "duration_minute": step.duration_minutes,
+            "dependencies": [str(dep) for dep in step.dependencies],
+            "ingredients": step.ingredients,
+        }
+        for step in planned_steps
+    ]
+    repo.upsert(url=url, title=title, snippet=snippet, planned_steps=steps_data)
 
-    return PlannedSteps(
-        planned_steps=[
-            PlannedStep(
-                step_id=str(step.step_id),
-                step_name=step.name,
-                duration_minute=step.duration_minutes,
-                dependencies=[str(dep) for dep in step.dependencies],
-                ingredients=step.ingredients,
-            )
-            for step in planned_steps
-        ]
-    )
+    return PlannedSteps(planned_steps=[PlannedStep(**step) for step in steps_data])

@@ -1,6 +1,13 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  Suspense,
+} from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import styles from "./page.module.css";
 import {
   PlannedStep,
@@ -30,7 +37,10 @@ const LOADING_MESSAGES = [
   "Building your checklist...",
 ];
 
-export default function Home() {
+function HomeContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
   // Input mode state
   const [inputMode, setInputMode] = useState<InputMode>("search");
   const [manualUrl, setManualUrl] = useState("");
@@ -67,6 +77,9 @@ export default function Home() {
   // Timer state
   const [timers, setTimers] = useState<Timers>({});
   const [timerCompleted, setTimerCompleted] = useState<Set<string>>(new Set());
+
+  // Share state
+  const [shareStatus, setShareStatus] = useState<"idle" | "copied">("idle");
 
   // Loading message rotation
   useEffect(() => {
@@ -121,6 +134,38 @@ export default function Home() {
     getPopularRecipes()
       .then((data) => setPopularRecipes(data.recipes))
       .catch(() => {});
+  }, []);
+
+  // Load recipe from URL parameter on mount
+  useEffect(() => {
+    const recipeUrl = searchParams.get("recipe");
+    if (recipeUrl) {
+      setLoading(true);
+      setCompletedSteps(new Set());
+      setTimers({});
+      setTimerCompleted(new Set());
+
+      loadRecipeFromUrl(recipeUrl)
+        .then((data) => {
+          setSteps(data.planned_steps);
+          setRecipeViewMode("checklist");
+          setSelectedRecipe({
+            title: getDomain(recipeUrl),
+            url: recipeUrl,
+            snippet: "",
+          });
+        })
+        .catch(() => {
+          setError(
+            "Could not load this recipe. The website may not be supported."
+          );
+        })
+        .finally(() => {
+          setLoading(false);
+        });
+    }
+    // Only run on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Helper to refresh popular recipes
@@ -186,11 +231,16 @@ export default function Home() {
       setCompletedSteps(new Set());
       setTimers({});
       setTimerCompleted(new Set());
+      setShareStatus("idle");
 
       try {
         const data = await loadRecipe(recipe);
         setSteps(data.planned_steps);
         refreshPopularRecipes();
+        // Update URL with recipe parameter
+        router.push(`?recipe=${encodeURIComponent(recipe.url)}`, {
+          scroll: false,
+        });
       } catch {
         setError(
           "Could not load this recipe. The website may not be supported."
@@ -200,7 +250,7 @@ export default function Home() {
         setLoading(false);
       }
     },
-    [refreshPopularRecipes]
+    [refreshPopularRecipes, router]
   );
 
   const handleLoadFromUrl = useCallback(async () => {
@@ -214,6 +264,7 @@ export default function Home() {
     setCompletedSteps(new Set());
     setTimers({});
     setTimerCompleted(new Set());
+    setShareStatus("idle");
 
     const url = manualUrl.trim();
 
@@ -227,6 +278,8 @@ export default function Home() {
         snippet: "",
       });
       refreshPopularRecipes();
+      // Update URL with recipe parameter
+      router.push(`?recipe=${encodeURIComponent(url)}`, { scroll: false });
     } catch {
       setError(
         "Could not load this recipe. The website may not be supported."
@@ -234,7 +287,7 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
-  }, [manualUrl, refreshPopularRecipes]);
+  }, [manualUrl, refreshPopularRecipes, router]);
 
   const handleBackToSearch = useCallback(() => {
     setSelectedRecipe(null);
@@ -244,7 +297,10 @@ export default function Home() {
     setTimers({});
     setTimerCompleted(new Set());
     setError("");
-  }, []);
+    setShareStatus("idle");
+    // Clear URL parameter
+    router.push("/", { scroll: false });
+  }, [router]);
 
   // Step handlers
   const toggleStep = useCallback((stepId: string) => {
@@ -300,6 +356,16 @@ export default function Home() {
       [stepId]: { remainingSeconds: durationMinutes * 60, isRunning: false },
     }));
   }, []);
+
+  // Share handler
+  const handleShare = useCallback(() => {
+    if (!selectedRecipe) return;
+    const shareUrl = `${window.location.origin}?recipe=${encodeURIComponent(selectedRecipe.url)}`;
+    navigator.clipboard.writeText(shareUrl).then(() => {
+      setShareStatus("copied");
+      setTimeout(() => setShareStatus("idle"), 2000);
+    });
+  }, [selectedRecipe]);
 
   // Memoized categorized steps
   const readySteps = useMemo(
@@ -376,6 +442,9 @@ export default function Home() {
             </span>
           </div>
           <div className={styles.selectedRecipeActions}>
+            <button onClick={handleShare} className={styles.shareButton}>
+              {shareStatus === "copied" ? "Copied!" : "Share"}
+            </button>
             <a
               href={selectedRecipe.url}
               target="_blank"
@@ -555,5 +624,24 @@ export default function Home() {
 
       {error && <p className={styles.errorMessage}>{error}</p>}
     </div>
+  );
+}
+
+export default function Home() {
+  return (
+    <Suspense
+      fallback={
+        <div className={styles.appContainer}>
+          <header className={styles.appHeader}>
+            <h1>Flow Recipe</h1>
+          </header>
+          <div className={styles.loadingContainer}>
+            <p className={styles.loadingText}>Loading...</p>
+          </div>
+        </div>
+      }
+    >
+      <HomeContent />
+    </Suspense>
   );
 }

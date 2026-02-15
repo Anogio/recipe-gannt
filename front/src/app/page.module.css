@@ -522,6 +522,24 @@
   border-color: #999;
 }
 
+.shareButton {
+  padding: 6px 12px;
+  font-size: 0.85rem;
+  color: #fff;
+  background: #C94528;
+  border: 1px solid #C94528;
+  border-radius: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+  min-width: 70px;
+}
+
+.shareButton:hover {
+  background: #A83920;
+  border-color: #A83920;
+}
+
 /* Loading state */
 .loadingContainer {
   text-align: center;
@@ -749,7 +767,8 @@
   }
 
   .originalLink,
-  .backButton {
+  .backButton,
+  .shareButton {
     width: 100%;
     text-align: center;
     padding: 10px 12px;

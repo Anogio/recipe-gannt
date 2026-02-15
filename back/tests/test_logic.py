@@ -3,15 +3,12 @@
 import datetime
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from logic import (
     PlannedStep,
     RecipeGraph,
     can_fetch_content,
     filter_accessible_urls,
     get_website_text,
-    make_gannt,
     parse_recipe_graph,
     plan_steps,
     to_time,
@@ -184,24 +181,6 @@ class TestToTime:
         """Should handle large offsets crossing days."""
         result = to_time(1500)  # 25 hours
         assert result == datetime.datetime(2000, 1, 2, 1, 0)
-
-
-class TestMakeGannt:
-    """Tests for make_gannt function."""
-
-    def test_creates_figure(self, sample_recipe_graph_json):
-        """Should create a plotly figure."""
-        graph = parse_recipe_graph(sample_recipe_graph_json)
-        planned = plan_steps(graph)
-        fig = make_gannt(planned)
-
-        assert fig is not None
-        assert hasattr(fig, "to_image")
-
-    def test_empty_steps(self):
-        """Empty steps list raises KeyError (no columns in dataframe)."""
-        with pytest.raises(KeyError):
-            make_gannt([])
 
 
 class TestCanFetchContent:

@@ -5,12 +5,9 @@ from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import openai
-import pandas as pd
-import plotly.express as px
 import requests
 from bs4 import BeautifulSoup
 from ddgs import DDGS
-from plotly.graph_objs import Figure
 from pydantic import BaseModel, Field
 
 from environment import OPENAI_API_KEY
@@ -388,35 +385,9 @@ def to_time(minute_offset: int) -> datetime.datetime:
     )
 
 
-def make_gannt(planned_steps: list[PlannedStep]) -> Figure:
-    df = pd.DataFrame(
-        [
-            {"Step": step.name, "Start": step.start_time, "End": step.end_time}
-            for step in planned_steps
-        ]
-    )
-
-    df["Start"] = df["Start"].apply(lambda x: to_time(x))
-    df["End"] = df["End"].apply(lambda x: to_time(x))
-
-    fig = px.timeline(df, x_start="Start", x_end="End", y="Step")
-    fig.update_yaxes(
-        autorange="reversed"
-    )  # otherwise tasks are listed from the bottom up
-    return fig
-
-
-def ganntify_recipe(url: str) -> tuple[list[PlannedStep], Figure, str]:
+def ganntify_recipe(url: str) -> tuple[list[PlannedStep], str]:
     extracted = extract_recipe(url)
     graph_string = generate_dependency_graph(extracted.recipe, extracted.ingredients)
     recipe_graph = parse_recipe_graph(graph_string)
     planned_steps = plan_steps(recipe_graph)
-    return planned_steps, make_gannt(planned_steps), extracted.title
-
-
-if __name__ == "__main__":
-    URL = "https://www.marmiton.org/recettes/recette_boeuf-bourguignon_18889.aspx"
-    planned_steps, fig, title = ganntify_recipe(URL)
-    print(f"Title: {title}")
-    print(planned_steps)
-    fig.show()
+    return planned_steps, extracted.title

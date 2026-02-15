@@ -11,6 +11,9 @@ load_dotenv()
 # Import our database configuration
 from database import Base, get_database_url
 
+# Import all models so Alembic can detect them
+from models import RecipeHistory  # noqa: F401
+
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
