@@ -7,7 +7,7 @@ class Step(BaseModel):
     step_id: int = Field(alias="id")
     name: str
     duration: int | None = None
-    ingredients: list[str] = []
+    ingredients: list[str] = Field(default_factory=list)
 
 
 class Dependency(BaseModel):

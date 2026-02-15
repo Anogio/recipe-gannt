@@ -1,18 +1,24 @@
 """OpenAI integration for recipe extraction and processing."""
 
 import re
+from urllib.parse import urljoin
 
-import openai
-import requests
 from bs4 import BeautifulSoup
+from httpx import AsyncClient, HTTPError, Timeout
+from openai import AsyncOpenAI
 
-from src.config.environment import OPENAI_API_KEY
+from src.config.environment import get_openai_api_key
 from src.services.schemas import ExtractedRecipe
+from src.services.url_safety import validate_public_url
 
-OPENAI_CLIENT = openai.OpenAI(
-    api_key=OPENAI_API_KEY,
-)
 MODEL = "gpt-4.1-mini"
+REQUEST_TIMEOUT = Timeout(connect=5.0, read=20.0, write=10.0, pool=5.0)
+MAX_REDIRECTS = 5
+USER_AGENT = (
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Chrome/120.0.0.0 Safari/537.36"
+)
 
 prompt_extract_recipe_content = """
 I will provide you with the full text of a cooking website page.
@@ -104,13 +110,43 @@ Here are the ingredients:
 """
 
 
-def extract_recipe(url: str) -> ExtractedRecipe:
+def _get_openai_client() -> AsyncOpenAI:
+    return AsyncOpenAI(api_key=get_openai_api_key())
+
+
+async def _safe_get(url: str) -> bytes:
+    """Fetch URL while validating each redirect target against SSRF."""
+    headers = {"User-Agent": USER_AGENT}
+
+    current_url = url
+    validate_public_url(current_url)
+
+    async with AsyncClient(timeout=REQUEST_TIMEOUT, follow_redirects=False) as client:
+        for _ in range(MAX_REDIRECTS + 1):
+            try:
+                response = await client.get(current_url, headers=headers)
+                if 300 <= response.status_code < 400:
+                    location = response.headers.get("location")
+                    if not location:
+                        raise RuntimeError(
+                            "Recipe URL redirected without location header"
+                        )
+                    current_url = urljoin(str(response.url), location)
+                    validate_public_url(current_url)
+                    continue
+
+                response.raise_for_status()
+            except HTTPError as exc:
+                raise RuntimeError(f"Failed to fetch recipe URL: {exc}") from exc
+            return response.content
+
+    raise RuntimeError("Recipe URL redirected too many times")
+
+
+async def extract_recipe(url: str) -> ExtractedRecipe:
     """Extract recipe content from a URL using AI."""
     # Fetch page and extract title
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-    }
-    html_content = requests.get(url, headers=headers).content
+    html_content = await _safe_get(url)
     soup = BeautifulSoup(html_content, "html.parser")
 
     # Extract title
@@ -125,7 +161,7 @@ def extract_recipe(url: str) -> ExtractedRecipe:
     body = soup.find("body")
     website_text = re.sub(r"\n+", "\n", body.get_text()) if body else ""
 
-    chat_completion = OPENAI_CLIENT.chat.completions.create(
+    chat_completion = await _get_openai_client().chat.completions.create(
         messages=[
             {
                 "role": "user",
@@ -142,9 +178,9 @@ def extract_recipe(url: str) -> ExtractedRecipe:
     return result
 
 
-def generate_dependency_graph(recipe_string: str, ingredients: str) -> str:
+async def generate_dependency_graph(recipe_string: str, ingredients: str) -> str:
     """Generate a dependency graph from recipe text using AI."""
-    chat_completion = OPENAI_CLIENT.chat.completions.create(
+    chat_completion = await _get_openai_client().chat.completions.create(
         messages=[
             {
                 "role": "user",

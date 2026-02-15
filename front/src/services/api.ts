@@ -6,9 +6,10 @@ import {
 } from "@/types";
 
 const BASE_URL =
-  process.env.NODE_ENV === "production"
+  process.env.NEXT_PUBLIC_API_BASE_URL ||
+  (process.env.NODE_ENV === "production"
     ? "https://flow-recipe-api.anog.fr"
-    : "http://127.0.0.1:8000";
+    : "http://127.0.0.1:8000");
 
 export async function searchRecipes(
   query: string,
@@ -29,7 +30,7 @@ export async function getPopularRecipes(): Promise<PopularRecipesResponse> {
   const response = await fetch(`${BASE_URL}/popular_recipes`);
 
   if (!response.ok) {
-    return { recipes: [] };
+    throw new Error("Failed to load popular recipes");
   }
 
   return response.json();

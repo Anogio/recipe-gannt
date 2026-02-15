@@ -1,5 +1,6 @@
 """Tests for web scraping utilities."""
 
+import time
 from unittest.mock import MagicMock, patch
 
 from src.services.scraping import (
@@ -110,6 +111,31 @@ class TestFilterAccessibleUrls:
         """Should handle empty list."""
         filtered = filter_accessible_urls([])
         assert filtered == []
+
+    @patch("src.services.scraping.can_fetch_content")
+    def test_preserves_original_order(self, mock_can_fetch):
+        """Should preserve search ranking despite concurrent fetch checks."""
+
+        def check_url(url):
+            if url == "https://a.com":
+                time.sleep(0.02)
+            return True
+
+        mock_can_fetch.side_effect = check_url
+
+        results = [
+            {"url": "https://a.com", "title": "A"},
+            {"url": "https://b.com", "title": "B"},
+            {"url": "https://c.com", "title": "C"},
+        ]
+
+        filtered = filter_accessible_urls(results)
+
+        assert [r["url"] for r in filtered] == [
+            "https://a.com",
+            "https://b.com",
+            "https://c.com",
+        ]
 
 
 class TestGetWebsiteText:

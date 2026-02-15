@@ -1,5 +1,5 @@
 """Configuration module."""
 
-from src.config.environment import OPENAI_API_KEY
+from src.config.environment import get_openai_api_key
 
-__all__ = ["OPENAI_API_KEY"]
+__all__ = ["get_openai_api_key"]

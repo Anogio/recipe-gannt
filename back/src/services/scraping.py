@@ -7,6 +7,8 @@ from urllib.parse import urlparse
 import requests
 from bs4 import BeautifulSoup
 
+from src.services.url_safety import validate_public_url
+
 # Domains that require payment or login to access recipes
 BLACKLISTED_DOMAINS = {
     "cooking.nytimes.com",
@@ -15,6 +17,13 @@ BLACKLISTED_DOMAINS = {
     "cookscountry.com",
     "milkstreet.com",
 }
+
+REQUEST_TIMEOUT_SECONDS = (5, 10)
+USER_AGENT = (
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Chrome/120.0.0.0 Safari/537.36"
+)
 
 
 def is_blacklisted_domain(url: str) -> bool:
@@ -31,12 +40,15 @@ def is_blacklisted_domain(url: str) -> bool:
 
 def get_website_text(url: str) -> str:
     """Fetch and extract text content from a URL."""
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-    }
-    html_content = requests.get(url, headers=headers).content
+    validate_public_url(url)
+    headers = {"User-Agent": USER_AGENT}
+    response = requests.get(url, headers=headers, timeout=REQUEST_TIMEOUT_SECONDS)
+    response.raise_for_status()
+    html_content = response.content
     soup = BeautifulSoup(html_content, "html.parser")
     element = soup.find("body")
+    if element is None:
+        return ""
     text = element.get_text()
     return re.sub(r"\n+", "\n", text)
 
@@ -44,10 +56,9 @@ def get_website_text(url: str) -> str:
 def can_fetch_content(url: str) -> bool:
     """Check if a URL can be scraped (returns real content, not JS blocker)."""
     try:
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-        }
-        response = requests.get(url, headers=headers, timeout=5)
+        validate_public_url(url)
+        headers = {"User-Agent": USER_AGENT}
+        response = requests.get(url, headers=headers, timeout=REQUEST_TIMEOUT_SECONDS)
         if response.status_code != 200:
             return False
 
@@ -67,15 +78,17 @@ def can_fetch_content(url: str) -> bool:
 
 def filter_accessible_urls(results: list[dict], max_workers: int = 4) -> list[dict]:
     """Filter search results to only include accessible URLs."""
-    accessible = []
+    accessible_with_index: list[tuple[int, dict]] = []
 
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         future_to_result = {
-            executor.submit(can_fetch_content, r["url"]): r for r in results
+            executor.submit(can_fetch_content, r["url"]): (i, r)
+            for i, r in enumerate(results)
         }
         for future in as_completed(future_to_result):
-            result = future_to_result[future]
+            index, result = future_to_result[future]
             if future.result():
-                accessible.append(result)
+                accessible_with_index.append((index, result))
 
-    return accessible
+    accessible_with_index.sort(key=lambda pair: pair[0])
+    return [result for _, result in accessible_with_index]

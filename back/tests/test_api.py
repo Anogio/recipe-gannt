@@ -1,6 +1,6 @@
 """Tests for app.py - FastAPI endpoints."""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -70,7 +70,7 @@ class TestSearchRecipesEndpoint:
         response = client.get("/search_recipes?query=pasta&page=2")
 
         assert response.status_code == 200
-        mock_search.assert_called_once_with("pasta", page=2)
+        mock_search.assert_called_once_with("pasta", 2)
 
     @patch("src.app.search_recipes")
     def test_search_empty_results(self, mock_search, client):
@@ -136,7 +136,7 @@ class TestGanntifyRecipeDataEndpoint:
 
     @patch("src.app.RecipeHistoryRepository")
     @patch("src.app.get_db")
-    @patch("src.app.ganntify_recipe")
+    @patch("src.app.ganntify_recipe", new_callable=AsyncMock)
     def test_returns_planned_steps_from_processing(
         self, mock_ganntify, mock_get_db, mock_repo_class, client
     ):
@@ -172,7 +172,7 @@ class TestGanntifyRecipeDataEndpoint:
 
     @patch("src.app.RecipeHistoryRepository")
     @patch("src.app.get_db")
-    @patch("src.app.ganntify_recipe")
+    @patch("src.app.ganntify_recipe", new_callable=AsyncMock)
     def test_returns_cached_steps(
         self, mock_ganntify, mock_get_db, mock_repo_class, client
     ):
@@ -207,7 +207,7 @@ class TestGanntifyRecipeDataEndpoint:
 
     @patch("src.app.RecipeHistoryRepository")
     @patch("src.app.get_db")
-    @patch("src.app.ganntify_recipe")
+    @patch("src.app.ganntify_recipe", new_callable=AsyncMock)
     def test_saves_to_database(
         self, mock_ganntify, mock_get_db, mock_repo_class, client
     ):
@@ -238,7 +238,7 @@ class TestGanntifyRecipeDataEndpoint:
 
     @patch("src.app.RecipeHistoryRepository")
     @patch("src.app.get_db")
-    @patch("src.app.ganntify_recipe")
+    @patch("src.app.ganntify_recipe", new_callable=AsyncMock)
     def test_uses_extracted_title_as_fallback(
         self, mock_ganntify, mock_get_db, mock_repo_class, client
     ):
@@ -262,7 +262,7 @@ class TestGanntifyRecipeDataEndpoint:
 
     @patch("src.app.RecipeHistoryRepository")
     @patch("src.app.get_db")
-    @patch("src.app.ganntify_recipe")
+    @patch("src.app.ganntify_recipe", new_callable=AsyncMock)
     def test_uses_default_title_when_no_title(
         self, mock_ganntify, mock_get_db, mock_repo_class, client
     ):
@@ -292,6 +292,15 @@ class TestGanntifyRecipeDataEndpoint:
         )
 
         assert response.status_code == 422
+
+    def test_rejects_private_network_url(self, client):
+        """Should return 400 for SSRF-prone internal addresses."""
+        response = client.post(
+            "/ganntify_recipe_data",
+            json={"recipe_url": "http://127.0.0.1/recipe"},
+        )
+
+        assert response.status_code == 400
 
     def test_missing_url(self, client):
         """Should return 422 for missing URL."""
@@ -345,7 +354,7 @@ class TestInputValidation:
 
     @patch("src.app.RecipeHistoryRepository")
     @patch("src.app.get_db")
-    @patch("src.app.ganntify_recipe")
+    @patch("src.app.ganntify_recipe", new_callable=AsyncMock)
     def test_ganntify_error_returns_500(
         self, mock_ganntify, mock_get_db, mock_repo_class, client
     ):
@@ -381,7 +390,7 @@ class TestModels:
 
     @patch("src.app.RecipeHistoryRepository")
     @patch("src.app.get_db")
-    @patch("src.app.ganntify_recipe")
+    @patch("src.app.ganntify_recipe", new_callable=AsyncMock)
     def test_recipe_url_accepts_http(
         self, mock_ganntify, mock_get_db, mock_repo_class, client
     ):
@@ -403,7 +412,7 @@ class TestModels:
 
     @patch("src.app.RecipeHistoryRepository")
     @patch("src.app.get_db")
-    @patch("src.app.ganntify_recipe")
+    @patch("src.app.ganntify_recipe", new_callable=AsyncMock)
     def test_recipe_url_accepts_https(
         self, mock_ganntify, mock_get_db, mock_repo_class, client
     ):

@@ -11,11 +11,13 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 from sqlalchemy.orm import Session
+from starlette.concurrency import run_in_threadpool
 
 from src.db.database import check_database_connection, get_db, run_migrations
 from src.db.repository import RecipeHistoryRepository
 from src.services.graph import ganntify_recipe
 from src.services.search import search_recipes
+from src.services.url_safety import validate_public_url
 
 logger = logging.getLogger(__name__)
 
@@ -129,7 +131,7 @@ async def search_recipes_api(
     query: Annotated[str, Query(min_length=1, max_length=200)],
     page: Annotated[int, Query(ge=0, le=100)] = 0,
 ) -> SearchResponse:
-    data = search_recipes(query, page=page)
+    data = await run_in_threadpool(search_recipes, query, page)
     return SearchResponse(
         results=[SearchResult(**r) for r in data["results"]],
         has_more=data["has_more"],
@@ -157,6 +159,11 @@ async def ganntify_recipe_data_api(
     request: Request, recipe_url: RecipeUrl, db: Session = Depends(get_db)
 ):
     url = str(recipe_url.recipe_url)
+    try:
+        validate_public_url(url)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
     repo = RecipeHistoryRepository(db)
 
     # Check cache first
@@ -178,7 +185,7 @@ async def ganntify_recipe_data_api(
 
     # Process recipe
     try:
-        planned_steps, extracted_title = ganntify_recipe(url)
+        planned_steps, extracted_title = await ganntify_recipe(url)
     except Exception as e:
         raise HTTPException(
             status_code=500,

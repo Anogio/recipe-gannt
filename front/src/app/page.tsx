@@ -61,6 +61,7 @@ function HomeContent() {
 
   // Popular recipes state
   const [popularRecipes, setPopularRecipes] = useState<SearchResult[]>([]);
+  const [popularRecipesWarning, setPopularRecipesWarning] = useState("");
 
   // Checklist state
   const [loading, setLoading] = useState(false);
@@ -132,8 +133,14 @@ function HomeContent() {
   // Fetch popular recipes on mount
   useEffect(() => {
     getPopularRecipes()
-      .then((data) => setPopularRecipes(data.recipes))
-      .catch(() => {});
+      .then((data) => {
+        setPopularRecipes(data.recipes);
+        setPopularRecipesWarning("");
+      })
+      .catch((err) => {
+        console.error("Failed to fetch popular recipes", err);
+        setPopularRecipesWarning("Popular recipes are temporarily unavailable.");
+      });
   }, []);
 
   // Load recipe from URL parameter on mount
@@ -171,8 +178,14 @@ function HomeContent() {
   // Helper to refresh popular recipes
   const refreshPopularRecipes = useCallback(() => {
     getPopularRecipes()
-      .then((data) => setPopularRecipes(data.recipes))
-      .catch(() => {});
+      .then((data) => {
+        setPopularRecipes(data.recipes);
+        setPopularRecipesWarning("");
+      })
+      .catch((err) => {
+        console.error("Failed to refresh popular recipes", err);
+        setPopularRecipesWarning("Popular recipes are temporarily unavailable.");
+      });
   }, []);
 
   // Search handlers
@@ -452,6 +465,10 @@ function HomeContent() {
             <span className={styles.recipeSource}>
               {getDomain(selectedRecipe.url)}
             </span>
+            <span className={styles.aiDisclaimer}>
+              AI was used to extract and structure these steps. Double-check key
+              details.
+            </span>
           </div>
           <div className={styles.selectedRecipeActions}>
             <button onClick={handleShare} className={styles.shareButton}>
@@ -641,6 +658,10 @@ function HomeContent() {
             </ul>
           </div>
         )}
+
+      {popularRecipesWarning && (
+        <p className={styles.warningMessage}>{popularRecipesWarning}</p>
+      )}
 
       {error && <p className={styles.errorMessage}>{error}</p>}
     </div>
