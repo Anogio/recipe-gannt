@@ -290,6 +290,7 @@ function HomeContent() {
   }, [manualUrl, refreshPopularRecipes, router]);
 
   const handleBackToSearch = useCallback(() => {
+    // Reset all state to initial values
     setSelectedRecipe(null);
     setRecipeViewMode("checklist");
     setSteps([]);
@@ -298,6 +299,13 @@ function HomeContent() {
     setTimerCompleted(new Set());
     setError("");
     setShareStatus("idle");
+    // Reset search state
+    setSearchQuery("");
+    setSearchResults([]);
+    setSearchPage(0);
+    setHasMore(false);
+    setManualUrl("");
+    setInputMode("search");
     // Clear URL parameter
     router.push("/", { scroll: false });
   }, [router]);
@@ -431,7 +439,11 @@ function HomeContent() {
     return (
       <div className={styles.appContainer}>
         <header className={styles.appHeader}>
-          <h1>Flow Recipe</h1>
+          <h1>
+            <span onClick={handleBackToSearch} className={styles.titleLink}>
+              Flow Recipe
+            </span>
+          </h1>
         </header>
 
         <div className={styles.selectedRecipe}>
@@ -521,7 +533,11 @@ function HomeContent() {
     return (
       <div className={styles.appContainer}>
         <header className={styles.appHeader}>
-          <h1>Flow Recipe</h1>
+          <h1>
+            <span onClick={handleBackToSearch} className={styles.titleLink}>
+              Flow Recipe
+            </span>
+          </h1>
         </header>
         <div className={styles.loadingContainer}>
           <p className={styles.loadingText}>
@@ -536,7 +552,11 @@ function HomeContent() {
   return (
     <div className={styles.appContainer}>
       <header className={styles.appHeader}>
-        <h1>Flow Recipe</h1>
+        <h1>
+          <span onClick={handleBackToSearch} className={styles.titleLink}>
+            Flow Recipe
+          </span>
+        </h1>
         <p className={styles.subtitle}>
           Turn any recipe into a smart step-by-step guide
         </p>
@@ -633,7 +653,9 @@ export default function Home() {
       fallback={
         <div className={styles.appContainer}>
           <header className={styles.appHeader}>
-            <h1>Flow Recipe</h1>
+            <h1>
+              <span className={styles.titleLink}>Flow Recipe</span>
+            </h1>
           </header>
           <div className={styles.loadingContainer}>
             <p className={styles.loadingText}>Loading...</p>
