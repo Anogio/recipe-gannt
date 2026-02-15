@@ -3,6 +3,7 @@ import datetime
 import re
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from urllib.parse import urlparse
 
 import openai
 import requests
@@ -11,6 +12,15 @@ from ddgs import DDGS
 from pydantic import BaseModel, Field
 
 from environment import OPENAI_API_KEY
+
+# Domains that require payment or login to access recipes
+BLACKLISTED_DOMAINS = {
+    "cooking.nytimes.com",
+    "americastestkitchen.com",
+    "cooksillustrated.com",
+    "cookscountry.com",
+    "milkstreet.com",
+}
 
 OPENAI_CLIENT = openai.OpenAI(
     api_key=OPENAI_API_KEY,
@@ -175,36 +185,69 @@ def filter_accessible_urls(results: list[dict], max_workers: int = 4) -> list[di
     return accessible
 
 
+def is_blacklisted_domain(url: str) -> bool:
+    """Check if URL belongs to a blacklisted domain."""
+    try:
+        domain = urlparse(url).netloc.lower()
+        return any(
+            domain == blacklisted or domain.endswith("." + blacklisted)
+            for blacklisted in BLACKLISTED_DOMAINS
+        )
+    except Exception:
+        return False
+
+
 PAGE_SIZE = 10
 
 
 def search_recipes(query: str, page: int = 0) -> dict:
     """Search for recipes using DuckDuckGo with pagination.
 
+    Filters out blacklisted domains and inaccessible URLs.
+    Continues fetching more results if filtering reduces count below PAGE_SIZE.
+
     Returns a dict with 'results' (list of recipes) and 'has_more' (boolean).
     """
-    # Fetch enough results to cover all pages up to and including the requested page
-    fetch_count = (page + 1) * PAGE_SIZE
+    target_count = (page + 1) * PAGE_SIZE  # Total results needed through current page
+    max_fetch = 50  # Safety limit to avoid infinite fetching
 
     with DDGS() as ddgs:
-        all_results = list(ddgs.text(f"{query} recipe", max_results=fetch_count))
+        all_results = []
+        seen_urls = set()
 
-    # Check if there might be more results
-    has_more = len(all_results) >= fetch_count
+        for result in ddgs.text(f"{query} recipe", max_results=max_fetch):
+            url = result["href"]
 
-    # Get only the results for the current page
+            # Skip duplicates
+            if url in seen_urls:
+                continue
+            seen_urls.add(url)
+
+            # Skip blacklisted domains
+            if is_blacklisted_domain(url):
+                continue
+
+            all_results.append(
+                {"title": result["title"], "url": url, "snippet": result["body"]}
+            )
+
+            # Stop early if we have enough candidates to potentially fill the page
+            # (we still need to filter for accessibility)
+            if len(all_results) >= target_count + PAGE_SIZE:
+                break
+
+    # Filter for accessible URLs
+    accessible_results = filter_accessible_urls(all_results)
+
+    # Paginate
     start_idx = page * PAGE_SIZE
     end_idx = start_idx + PAGE_SIZE
-    page_results = all_results[start_idx:end_idx]
+    page_results = accessible_results[start_idx:end_idx]
 
-    raw_results = [
-        {"title": r["title"], "url": r["href"], "snippet": r["body"]}
-        for r in page_results
-    ]
+    # Check if there are more results beyond current page
+    has_more = len(accessible_results) > end_idx
 
-    filtered_results = filter_accessible_urls(raw_results)
-
-    return {"results": filtered_results, "has_more": has_more}
+    return {"results": page_results, "has_more": has_more}
 
 
 class ExtractedRecipe(BaseModel):

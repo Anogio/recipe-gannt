@@ -9,8 +9,10 @@ from logic import (
     can_fetch_content,
     filter_accessible_urls,
     get_website_text,
+    is_blacklisted_domain,
     parse_recipe_graph,
     plan_steps,
+    search_recipes,
     to_time,
     visit_recipe_graph,
 )
@@ -366,3 +368,75 @@ class TestPlannedStepDataclass:
             ingredients=[],
         )
         assert step.end_date == datetime.datetime(2000, 1, 1, 1, 30)
+
+
+class TestIsBlacklistedDomain:
+    """Tests for is_blacklisted_domain function."""
+
+    def test_exact_match(self):
+        """Should detect exact domain match."""
+        assert is_blacklisted_domain("https://cooking.nytimes.com/recipe/123") is True
+
+    def test_subdomain_match(self):
+        """Should detect subdomain of blacklisted domain."""
+        assert (
+            is_blacklisted_domain("https://www.americastestkitchen.com/recipe") is True
+        )
+
+    def test_non_blacklisted(self):
+        """Should allow non-blacklisted domains."""
+        assert is_blacklisted_domain("https://allrecipes.com/recipe/123") is False
+
+    def test_partial_match_not_blocked(self):
+        """Should not block domains that contain but don't match blacklisted."""
+        # "nytimes.com" is not blacklisted, only "cooking.nytimes.com"
+        assert is_blacklisted_domain("https://nytimes.com/article") is False
+
+    def test_invalid_url(self):
+        """Should handle invalid URLs gracefully."""
+        assert is_blacklisted_domain("not-a-url") is False
+
+
+class TestSearchRecipesBlacklist:
+    """Tests for blacklist filtering in search_recipes."""
+
+    @patch("logic.filter_accessible_urls")
+    @patch("logic.DDGS")
+    def test_filters_blacklisted_domains(self, mock_ddgs, mock_filter):
+        """Should filter out blacklisted domains before accessibility check."""
+        # Setup mock DuckDuckGo results
+        mock_ddgs_instance = MagicMock()
+        mock_ddgs.return_value.__enter__.return_value = mock_ddgs_instance
+        mock_ddgs_instance.text.return_value = [
+            {
+                "title": "NYT Recipe",
+                "href": "https://cooking.nytimes.com/recipe/1",
+                "body": "A recipe",
+            },
+            {
+                "title": "Good Recipe",
+                "href": "https://allrecipes.com/recipe/1",
+                "body": "Another recipe",
+            },
+            {
+                "title": "ATK Recipe",
+                "href": "https://americastestkitchen.com/recipe/1",
+                "body": "ATK recipe",
+            },
+        ]
+        mock_filter.return_value = [
+            {
+                "title": "Good Recipe",
+                "url": "https://allrecipes.com/recipe/1",
+                "snippet": "Another recipe",
+            }
+        ]
+
+        search_recipes("test", page=0)
+
+        # Verify filter_accessible_urls was called without blacklisted URLs
+        call_args = mock_filter.call_args[0][0]
+        urls = [r["url"] for r in call_args]
+        assert "https://cooking.nytimes.com/recipe/1" not in urls
+        assert "https://americastestkitchen.com/recipe/1" not in urls
+        assert "https://allrecipes.com/recipe/1" in urls
