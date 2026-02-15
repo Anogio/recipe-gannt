@@ -112,8 +112,59 @@ npm run lint    # Run ESLint
 ## Deployment
 
 The project is deployed on Railway with:
-- `Recipe Back` - FastAPI backend
-- `Recipe Front` - Next.js frontend
+- `Recipe Back` - FastAPI backend (https://flow-recipe-api.anog.fr)
+- `Recipe Front` - Next.js frontend (https://flow-recipe.anog.fr)
 - `Recipe DB` - PostgreSQL database
 
 Railway auto-deploys on push to master. The backend automatically runs migrations on startup.
+
+### Railway CLI Commands
+
+Service names contain spaces, so always quote them:
+
+```bash
+# Link to a service (required before other commands)
+railway service "Recipe Back"
+railway service "Recipe Front"
+
+# List recent deployments
+railway deployment list --limit 5
+
+# View build logs (for debugging failed builds)
+railway logs --build
+
+# View deploy/runtime logs
+railway logs
+
+# Check service domain
+railway domain
+```
+
+### Railway Build Configuration
+
+Railway's Railpack auto-detects Python projects and looks for `main.py` or `app.py` in the project root. Since our app is at `src/app.py`, we use a `Procfile` to specify the start command:
+
+```
+web: uvicorn src.app:app --host 0.0.0.0 --port $PORT
+```
+
+**If a deployment fails with "No start command was found"**, check that the `Procfile` exists and has the correct path to the app.
+
+### Monitoring Deployments
+
+After pushing to master:
+
+1. Link to the service: `railway service "Recipe Back"`
+2. Watch deployments: `railway deployment list --limit 3`
+3. Check logs if BUILDING: `railway logs --build`
+4. Check logs if FAILED: `railway logs --build` (shows build errors)
+5. Verify after SUCCESS: `curl https://flow-recipe-api.anog.fr/health`
+
+### Common Issues
+
+| Issue | Solution |
+|-------|----------|
+| "No start command found" | Ensure `back/Procfile` exists with correct uvicorn command |
+| Service name errors in CLI | Quote service names: `railway service "Recipe Back"` |
+| Build fails after moving files | Update `Procfile` path to match new app location |
+| Database connection fails | Check `DATABASE_URL` is set in Railway service variables |
