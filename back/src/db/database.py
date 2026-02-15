@@ -85,9 +85,8 @@ def check_database_connection() -> bool:
 
 def run_migrations():
     """Run pending Alembic migrations."""
-    from alembic.config import Config
-
     from alembic import command
+    from alembic.config import Config
 
     # Get the directory where this file is located (src/db)
     # Go up two levels to get to back/
