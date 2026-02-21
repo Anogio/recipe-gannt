@@ -1,0 +1,21 @@
+
+> gannt-recipe@0.1.0 dev
+> next dev --turbopack
+
+ ⚠ Port 3000 is in use by process 94596, using available port 3001 instead.
+   ▲ Next.js 15.5.12 (Turbopack)
+   - Local:        http://localhost:3001
+   - Network:      http://192.168.1.27:3001
+
+ ✓ Starting...
+ ✓ Ready in 1037ms
+ ○ Compiling / ...
+ ✓ Compiled / in 1473ms
+ GET / 200 in 1723ms
+ ✓ Compiled /icon.svg in 299ms
+ GET /icon.svg?icon.7958ccb9.svg 200 in 561ms
+ GET /?recipe=https%3A%2F%2Fwww.recipetineats.com%2Fcarbonara%2F 200 in 79ms
+ GET / 200 in 69ms
+ GET /?recipe=https%3A%2F%2Fwww.bbcgoodfood.com%2Frecipes%2Fultimate-spaghetti-carbonara-recipe 200 in 105ms
+ GET / 200 in 70ms
+ GET /?recipe=https%3A%2F%2Fwww.recipesfromitaly.com%2Fspaghetti-carbonara-original-recipe%2F 200 in 81ms
