@@ -2,6 +2,7 @@
 
 import React, { useCallback } from "react";
 import styles from "@/app/page.module.css";
+import { useI18n } from "@/i18n";
 
 interface SearchInputProps {
   value: string;
@@ -18,6 +19,8 @@ export const SearchInput = React.memo(function SearchInput({
   onChange,
   onSubmit,
 }: SearchInputProps) {
+  const { messages } = useI18n();
+
   const handleChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       onChange(e.target.value);
@@ -25,8 +28,8 @@ export const SearchInput = React.memo(function SearchInput({
     [onChange]
   );
 
-  const handleKeyPress = useCallback(
-    (e: React.KeyboardEvent) => {
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
       if (e.key === "Enter") {
         onSubmit();
       }
@@ -41,14 +44,14 @@ export const SearchInput = React.memo(function SearchInput({
         placeholder={placeholder}
         value={value}
         onChange={handleChange}
-        onKeyPress={handleKeyPress}
+        onKeyDown={handleKeyDown}
         className={styles.inputField}
       />
       <button
         onClick={onSubmit}
         disabled={isLoading}
         className={styles.submitButton}
-        aria-label="Submit"
+        aria-label={messages.search.submit}
       >
         {isLoading ? <span className={styles.spinner} /> : "→"}
       </button>

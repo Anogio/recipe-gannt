@@ -1,4 +1,5 @@
 export { ChecklistView } from "./ChecklistView";
+export { LanguageSwitcher } from "./LanguageSwitcher";
 export { RecipeCard } from "./RecipeCard";
 export { RecipeGraph } from "./RecipeGraph";
 export { SearchInput } from "./SearchInput";

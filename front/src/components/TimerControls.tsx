@@ -2,6 +2,7 @@
 
 import React, { useCallback } from "react";
 import styles from "@/app/page.module.css";
+import { useI18n } from "@/i18n";
 
 interface TimerControlsProps {
   stepId: string;
@@ -28,6 +29,8 @@ export const TimerControls = React.memo(function TimerControls({
   onPause,
   onReset,
 }: TimerControlsProps) {
+  const { messages } = useI18n();
+
   const totalSeconds = durationMinutes * 60;
   const progress = (remainingSeconds / totalSeconds) * 100;
 
@@ -65,7 +68,7 @@ export const TimerControls = React.memo(function TimerControls({
         <button
           className={styles.timerButton}
           onClick={handlePause}
-          aria-label="Pause timer"
+          aria-label={messages.timer.pause}
         >
           ❚❚
         </button>
@@ -73,7 +76,7 @@ export const TimerControls = React.memo(function TimerControls({
         <button
           className={styles.timerButton}
           onClick={handleStart}
-          aria-label="Start timer"
+          aria-label={messages.timer.start}
         >
           ▶
         </button>
@@ -82,7 +85,7 @@ export const TimerControls = React.memo(function TimerControls({
         <button
           className={styles.timerResetButton}
           onClick={handleReset}
-          aria-label="Reset timer"
+          aria-label={messages.timer.reset}
         >
           ↺
         </button>

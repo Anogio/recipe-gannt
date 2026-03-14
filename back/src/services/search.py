@@ -1,13 +1,21 @@
 """Recipe search functionality using DuckDuckGo."""
 
+from typing import Literal
+
 from ddgs import DDGS
 
 from src.services.scraping import filter_accessible_urls, is_blacklisted_domain
 
 PAGE_SIZE = 10
+SearchLocale = Literal["en", "fr"]
+
+SEARCH_CONFIG: dict[SearchLocale, dict[str, str]] = {
+    "en": {"region": "us-en", "recipe_term": "recipe"},
+    "fr": {"region": "fr-fr", "recipe_term": "recette"},
+}
 
 
-def search_recipes(query: str, page: int = 0) -> dict:
+def search_recipes(query: str, locale: SearchLocale, page: int = 0) -> dict:
     """Search for recipes using DuckDuckGo with pagination.
 
     Filters out blacklisted domains and inaccessible URLs.
@@ -17,12 +25,17 @@ def search_recipes(query: str, page: int = 0) -> dict:
     """
     target_count = (page + 1) * PAGE_SIZE  # Total results needed through current page
     max_fetch = 50  # Safety limit to avoid infinite fetching
+    search_config = SEARCH_CONFIG[locale]
 
     with DDGS() as ddgs:
         all_results = []
         seen_urls = set()
 
-        for result in ddgs.text(f"{query} recipe", max_results=max_fetch):
+        for result in ddgs.text(
+            f"{query} {search_config['recipe_term']}",
+            region=search_config["region"],
+            max_results=max_fetch,
+        ):
             url = result["href"]
 
             # Skip duplicates

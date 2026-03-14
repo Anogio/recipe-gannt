@@ -7,6 +7,47 @@
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
+.appHeader {
+  margin-bottom: 20px;
+}
+
+.headerTopRow {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 10px;
+}
+
+.languageSwitcher {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid #e3d5ce;
+  border-radius: 999px;
+  background: #fff8f4;
+}
+
+.languageButton {
+  padding: 6px 10px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: #7d5b50;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.languageButton:hover {
+  background: #f5e7df;
+  color: #5f463c;
+}
+
+.languageButtonActive {
+  background: #C94528;
+  color: #fff;
+}
+
 .appHeader h1 {
   font-size: 1.8rem;
   margin-bottom: 6px;
@@ -766,6 +807,15 @@
 
   .appHeader h1 {
     font-size: 1.5rem;
+  }
+
+  .headerTopRow {
+    justify-content: center;
+  }
+
+  .languageSwitcher {
+    width: 100%;
+    justify-content: center;
   }
 
   .subtitle {

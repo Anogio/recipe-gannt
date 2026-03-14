@@ -2,6 +2,7 @@
 
 import React, { useMemo, useRef, useState } from "react";
 import styles from "@/app/page.module.css";
+import { useI18n } from "@/i18n";
 import { PlannedStep } from "@/types";
 
 interface RecipeGraphProps {
@@ -47,7 +48,9 @@ function wrapText(text: string, maxCharsPerLine: number): string[] {
   const rawWords = text.trim().split(/\s+/).filter(Boolean);
   if (rawWords.length === 0) return [""];
 
-  const words = rawWords.flatMap((word) => splitLongWord(word, maxCharsPerLine));
+  const words = rawWords.flatMap((word) =>
+    splitLongWord(word, maxCharsPerLine)
+  );
   const lines: string[] = [];
   let currentLine = "";
 
@@ -90,6 +93,7 @@ export function RecipeGraph({
   completedSteps,
   onToggleStep,
 }: RecipeGraphProps) {
+  const { messages } = useI18n();
   const [tooltip, setTooltip] = useState<{
     step: PlannedStep;
     x: number;
@@ -143,7 +147,10 @@ export function RecipeGraph({
 
       for (const childId of children.get(current) ?? []) {
         const nextLevel = currentLevel + 1;
-        levelById.set(childId, Math.max(levelById.get(childId) ?? 0, nextLevel));
+        levelById.set(
+          childId,
+          Math.max(levelById.get(childId) ?? 0, nextLevel)
+        );
 
         const nextIndegree = (indegree.get(childId) ?? 0) - 1;
         indegree.set(childId, nextIndegree);
@@ -204,7 +211,8 @@ export function RecipeGraph({
     const positionedNodes: PositionedNode[] = [];
     for (const [rowIndex, [, levelSteps]] of sortedLevels.entries()) {
       const rowWidth =
-        levelSteps.length * NODE_WIDTH + Math.max(0, levelSteps.length - 1) * COLUMN_GAP;
+        levelSteps.length * NODE_WIDTH +
+        Math.max(0, levelSteps.length - 1) * COLUMN_GAP;
       const leftOffset = (totalGridWidth - rowWidth) / 2;
       const rowTop = rowYPositions[rowIndex];
 
@@ -242,7 +250,9 @@ export function RecipeGraph({
       }
     }
 
-    const nodeById = new Map(positionedNodes.map((node) => [node.step.step_id, node]));
+    const nodeById = new Map(
+      positionedNodes.map((node) => [node.step.step_id, node])
+    );
     const edges: Array<{ from: PositionedNode; to: PositionedNode }> = [];
 
     for (const node of positionedNodes) {
@@ -272,27 +282,27 @@ export function RecipeGraph({
 
   return (
     <section className={styles.graphContainer}>
-      <p className={styles.graphSubtitle}>
-        Click a step to mark it as completed
-      </p>
+      <p className={styles.graphSubtitle}>{messages.graph.subtitle}</p>
       <div className={styles.graphLegend}>
         <span>
           <i className={`${styles.legendDot} ${styles.legendCompleted}`} />
-          Completed
+          {messages.graph.legendCompleted}
         </span>
         <span>
           <i className={`${styles.legendDot} ${styles.legendReady}`} />
-          Now
+          {messages.graph.legendReady}
         </span>
         <span>
           <i className={`${styles.legendDot} ${styles.legendBlocked}`} />
-          Next up
+          {messages.graph.legendBlocked}
         </span>
       </div>
 
       <div
         ref={viewportRef}
-        className={`${styles.graphViewport} ${isPanning ? styles.graphViewportDragging : ""}`}
+        className={`${styles.graphViewport} ${
+          isPanning ? styles.graphViewportDragging : ""
+        }`}
         onPointerDown={(event) => {
           if (!viewportRef.current) return;
           panStateRef.current = {
@@ -307,7 +317,11 @@ export function RecipeGraph({
         }}
         onPointerMove={(event) => {
           const panState = panStateRef.current;
-          if (!panState || !viewportRef.current || panState.pointerId !== event.pointerId) {
+          if (
+            !panState ||
+            !viewportRef.current ||
+            panState.pointerId !== event.pointerId
+          ) {
             return;
           }
 
@@ -328,7 +342,11 @@ export function RecipeGraph({
         }}
         onPointerUp={(event) => {
           const panState = panStateRef.current;
-          if (!panState || !viewportRef.current || panState.pointerId !== event.pointerId) {
+          if (
+            !panState ||
+            !viewportRef.current ||
+            panState.pointerId !== event.pointerId
+          ) {
             return;
           }
           if (panState.hasDragged) {
@@ -336,7 +354,10 @@ export function RecipeGraph({
           }
           panStateRef.current = null;
           setIsPanning(false);
-          if (panState.isCaptured && viewportRef.current.hasPointerCapture(event.pointerId)) {
+          if (
+            panState.isCaptured &&
+            viewportRef.current.hasPointerCapture(event.pointerId)
+          ) {
             viewportRef.current.releasePointerCapture(event.pointerId);
           }
         }}
@@ -355,7 +376,7 @@ export function RecipeGraph({
           height={graph.height}
           preserveAspectRatio="xMinYMin meet"
           role="img"
-          aria-label="Recipe dependency graph"
+          aria-label={messages.graph.ariaLabel}
         >
           <defs>
             <marker
@@ -432,7 +453,9 @@ export function RecipeGraph({
                 }}
                 onMouseLeave={() => setTooltip(null)}
                 className={
-                  isClickable ? styles.graphNodeClickable : styles.graphNodeBlockedCursor
+                  isClickable
+                    ? styles.graphNodeClickable
+                    : styles.graphNodeBlockedCursor
                 }
               >
                 <rect

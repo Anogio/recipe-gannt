@@ -2,7 +2,7 @@
 
 import logging
 from contextlib import asynccontextmanager
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -129,9 +129,10 @@ async def health():
 async def search_recipes_api(
     request: Request,
     query: Annotated[str, Query(min_length=1, max_length=200)],
+    locale: Literal["en", "fr"],
     page: Annotated[int, Query(ge=0, le=100)] = 0,
 ) -> SearchResponse:
-    data = await run_in_threadpool(search_recipes, query, page)
+    data = await run_in_threadpool(search_recipes, query, locale, page)
     return SearchResponse(
         results=[SearchResult(**r) for r in data["results"]],
         has_more=data["has_more"],

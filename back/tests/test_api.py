@@ -54,7 +54,7 @@ class TestSearchRecipesEndpoint:
             "has_more": False,
         }
 
-        response = client.get("/search_recipes?query=pasta")
+        response = client.get("/search_recipes?query=pasta&locale=en")
 
         assert response.status_code == 200
         data = response.json()
@@ -67,17 +67,17 @@ class TestSearchRecipesEndpoint:
         """Should pass page parameter to search."""
         mock_search.return_value = {"results": [], "has_more": True}
 
-        response = client.get("/search_recipes?query=pasta&page=2")
+        response = client.get("/search_recipes?query=pasta&locale=fr&page=2")
 
         assert response.status_code == 200
-        mock_search.assert_called_once_with("pasta", 2)
+        mock_search.assert_called_once_with("pasta", "fr", 2)
 
     @patch("src.app.search_recipes")
     def test_search_empty_results(self, mock_search, client):
         """Should handle empty results."""
         mock_search.return_value = {"results": [], "has_more": False}
 
-        response = client.get("/search_recipes?query=nonexistent")
+        response = client.get("/search_recipes?query=nonexistent&locale=en")
 
         assert response.status_code == 200
         assert response.json()["results"] == []
@@ -85,6 +85,12 @@ class TestSearchRecipesEndpoint:
     def test_search_missing_query(self, client):
         """Should return 422 for missing query parameter."""
         response = client.get("/search_recipes")
+
+        assert response.status_code == 422
+
+    def test_search_missing_locale(self, client):
+        """Should return 422 for missing locale parameter."""
+        response = client.get("/search_recipes?query=pasta")
 
         assert response.status_code == 422
 
@@ -134,11 +140,12 @@ class TestPopularRecipesEndpoint:
 class TestGanntifyRecipeDataEndpoint:
     """Tests for POST /ganntify_recipe_data endpoint."""
 
+    @patch("src.app.validate_public_url")
     @patch("src.app.RecipeHistoryRepository")
     @patch("src.app.get_db")
     @patch("src.app.ganntify_recipe", new_callable=AsyncMock)
     def test_returns_planned_steps_from_processing(
-        self, mock_ganntify, mock_get_db, mock_repo_class, client
+        self, mock_ganntify, mock_get_db, mock_repo_class, mock_validate_url, client
     ):
         """Should return planned steps data when not cached."""
         mock_db = MagicMock()
@@ -168,13 +175,15 @@ class TestGanntifyRecipeDataEndpoint:
         assert data["planned_steps"][0]["duration_minute"] == 10
         assert data["planned_steps"][0]["dependencies"] == ["2", "3"]
         assert data["planned_steps"][0]["ingredients"] == ["water", "salt"]
+        mock_validate_url.assert_called_once_with("https://example.com/recipe")
         mock_repo.upsert.assert_called_once()
 
+    @patch("src.app.validate_public_url")
     @patch("src.app.RecipeHistoryRepository")
     @patch("src.app.get_db")
     @patch("src.app.ganntify_recipe", new_callable=AsyncMock)
     def test_returns_cached_steps(
-        self, mock_ganntify, mock_get_db, mock_repo_class, client
+        self, mock_ganntify, mock_get_db, mock_repo_class, mock_validate_url, client
     ):
         """Should return cached steps without reprocessing."""
         mock_db = MagicMock()
@@ -202,14 +211,16 @@ class TestGanntifyRecipeDataEndpoint:
         assert response.status_code == 200
         data = response.json()
         assert data["planned_steps"][0]["step_name"] == "Cached step"
+        mock_validate_url.assert_called_once_with("https://example.com/recipe")
         mock_ganntify.assert_not_called()  # Should not process
         mock_repo.touch.assert_called_once()  # Should update timestamp
 
+    @patch("src.app.validate_public_url")
     @patch("src.app.RecipeHistoryRepository")
     @patch("src.app.get_db")
     @patch("src.app.ganntify_recipe", new_callable=AsyncMock)
     def test_saves_to_database(
-        self, mock_ganntify, mock_get_db, mock_repo_class, client
+        self, mock_ganntify, mock_get_db, mock_repo_class, mock_validate_url, client
     ):
         """Should save recipe to database after processing."""
         mock_db = MagicMock()
@@ -230,17 +241,19 @@ class TestGanntifyRecipeDataEndpoint:
             },
         )
 
+        mock_validate_url.assert_called_once_with("https://example.com/recipe")
         mock_repo.upsert.assert_called_once()
         call_kwargs = mock_repo.upsert.call_args[1]
         assert call_kwargs["url"] == "https://example.com/recipe"
         assert call_kwargs["title"] == "Custom Title"
         assert call_kwargs["snippet"] == "Custom snippet"
 
+    @patch("src.app.validate_public_url")
     @patch("src.app.RecipeHistoryRepository")
     @patch("src.app.get_db")
     @patch("src.app.ganntify_recipe", new_callable=AsyncMock)
     def test_uses_extracted_title_as_fallback(
-        self, mock_ganntify, mock_get_db, mock_repo_class, client
+        self, mock_ganntify, mock_get_db, mock_repo_class, mock_validate_url, client
     ):
         """Should use extracted title when none provided."""
         mock_db = MagicMock()
@@ -257,14 +270,16 @@ class TestGanntifyRecipeDataEndpoint:
             json={"recipe_url": "https://example.com/recipe"},
         )
 
+        mock_validate_url.assert_called_once_with("https://example.com/recipe")
         call_kwargs = mock_repo.upsert.call_args[1]
         assert call_kwargs["title"] == "Extracted Title"
 
+    @patch("src.app.validate_public_url")
     @patch("src.app.RecipeHistoryRepository")
     @patch("src.app.get_db")
     @patch("src.app.ganntify_recipe", new_callable=AsyncMock)
     def test_uses_default_title_when_no_title(
-        self, mock_ganntify, mock_get_db, mock_repo_class, client
+        self, mock_ganntify, mock_get_db, mock_repo_class, mock_validate_url, client
     ):
         """Should use 'Recipe' as default when no title available."""
         mock_db = MagicMock()
@@ -281,6 +296,7 @@ class TestGanntifyRecipeDataEndpoint:
             json={"recipe_url": "https://example.com/recipe"},
         )
 
+        mock_validate_url.assert_called_once_with("https://example.com/recipe")
         call_kwargs = mock_repo.upsert.call_args[1]
         assert call_kwargs["title"] == "Recipe"
 
@@ -333,30 +349,31 @@ class TestInputValidation:
 
     def test_search_empty_query_rejected(self, client):
         """Should reject empty search query."""
-        response = client.get("/search_recipes?query=")
+        response = client.get("/search_recipes?query=&locale=en")
         assert response.status_code == 422
 
     def test_search_too_long_query_rejected(self, client):
         """Should reject search query over 200 characters."""
         long_query = "a" * 201
-        response = client.get(f"/search_recipes?query={long_query}")
+        response = client.get(f"/search_recipes?query={long_query}&locale=en")
         assert response.status_code == 422
 
     def test_search_negative_page_rejected(self, client):
         """Should reject negative page number."""
-        response = client.get("/search_recipes?query=pasta&page=-1")
+        response = client.get("/search_recipes?query=pasta&locale=en&page=-1")
         assert response.status_code == 422
 
     def test_search_page_over_100_rejected(self, client):
         """Should reject page number over 100."""
-        response = client.get("/search_recipes?query=pasta&page=101")
+        response = client.get("/search_recipes?query=pasta&locale=en&page=101")
         assert response.status_code == 422
 
+    @patch("src.app.validate_public_url")
     @patch("src.app.RecipeHistoryRepository")
     @patch("src.app.get_db")
     @patch("src.app.ganntify_recipe", new_callable=AsyncMock)
     def test_ganntify_error_returns_500(
-        self, mock_ganntify, mock_get_db, mock_repo_class, client
+        self, mock_ganntify, mock_get_db, mock_repo_class, mock_validate_url, client
     ):
         """Should return 500 when ganntify fails."""
         mock_db = MagicMock()
@@ -373,6 +390,7 @@ class TestInputValidation:
             json={"recipe_url": "https://example.com/recipe"},
         )
 
+        mock_validate_url.assert_called_once_with("https://example.com/recipe")
         assert response.status_code == 500
         assert "Failed to process recipe" in response.json()["detail"]
 
@@ -388,11 +406,12 @@ class TestModels:
         )
         assert response.status_code == 422
 
+    @patch("src.app.validate_public_url")
     @patch("src.app.RecipeHistoryRepository")
     @patch("src.app.get_db")
     @patch("src.app.ganntify_recipe", new_callable=AsyncMock)
     def test_recipe_url_accepts_http(
-        self, mock_ganntify, mock_get_db, mock_repo_class, client
+        self, mock_ganntify, mock_get_db, mock_repo_class, mock_validate_url, client
     ):
         """Should accept HTTP URLs."""
         mock_db = MagicMock()
@@ -408,13 +427,15 @@ class TestModels:
             "/ganntify_recipe_data",
             json={"recipe_url": "http://example.com/recipe"},
         )
+        mock_validate_url.assert_called_once_with("http://example.com/recipe")
         assert response.status_code == 200
 
+    @patch("src.app.validate_public_url")
     @patch("src.app.RecipeHistoryRepository")
     @patch("src.app.get_db")
     @patch("src.app.ganntify_recipe", new_callable=AsyncMock)
     def test_recipe_url_accepts_https(
-        self, mock_ganntify, mock_get_db, mock_repo_class, client
+        self, mock_ganntify, mock_get_db, mock_repo_class, mock_validate_url, client
     ):
         """Should accept HTTPS URLs."""
         mock_db = MagicMock()
@@ -430,4 +451,5 @@ class TestModels:
             "/ganntify_recipe_data",
             json={"recipe_url": "https://example.com/recipe"},
         )
+        mock_validate_url.assert_called_once_with("https://example.com/recipe")
         assert response.status_code == 200

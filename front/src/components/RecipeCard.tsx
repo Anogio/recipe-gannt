@@ -4,6 +4,7 @@ import React, { useCallback } from "react";
 import styles from "@/app/page.module.css";
 import { SearchResult } from "@/types";
 import { getDomain } from "@/services/api";
+import { useI18n } from "@/i18n";
 
 interface RecipeCardProps {
   recipe: SearchResult;
@@ -14,6 +15,8 @@ export const RecipeCard = React.memo(function RecipeCard({
   recipe,
   onSelect,
 }: RecipeCardProps) {
+  const { messages } = useI18n();
+
   const handleSelect = useCallback(() => {
     onSelect(recipe);
   }, [recipe, onSelect]);
@@ -39,7 +42,7 @@ export const RecipeCard = React.memo(function RecipeCard({
           className={styles.resultOriginalLink}
           onClick={handleLinkClick}
         >
-          View original
+          {messages.search.viewOriginal}
         </a>
       </div>
     </li>

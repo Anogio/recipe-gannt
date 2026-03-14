@@ -2,6 +2,7 @@
 
 import React from "react";
 import styles from "@/app/page.module.css";
+import { useI18n } from "@/i18n";
 import { PlannedStep, Timers, ExpandedSections } from "@/types";
 import { StepItem } from "./StepItem";
 import { StepSection } from "./StepSection";
@@ -39,12 +40,14 @@ export function ChecklistView({
   onToggleBlockedSection,
   onToggleCompletedSection,
 }: ChecklistViewProps) {
+  const { messages } = useI18n();
+
   return (
     <div className={styles.checklistContainer}>
       {readySteps.length > 0 && (
         <StepSection
-          title="Now"
-          subtitle="You can do these steps now. The next steps will appear as you progress in the recipe"
+          title={messages.checklist.readyTitle}
+          subtitle={messages.checklist.readySubtitle}
           count={readySteps.length}
           isExpanded={expandedSections.ready}
           onToggle={onToggleReadySection}
@@ -68,8 +71,8 @@ export function ChecklistView({
 
       {blockedSteps.length > 0 && (
         <StepSection
-          title="Next up"
-          subtitle="You still need to complete other steps to do these"
+          title={messages.checklist.blockedTitle}
+          subtitle={messages.checklist.blockedSubtitle}
           count={blockedSteps.length}
           isExpanded={expandedSections.blocked}
           onToggle={onToggleBlockedSection}
@@ -93,7 +96,7 @@ export function ChecklistView({
 
       {completedStepsList.length > 0 && (
         <StepSection
-          title="Completed"
+          title={messages.checklist.completedTitle}
           count={completedStepsList.length}
           isExpanded={expandedSections.completed}
           onToggle={onToggleCompletedSection}
@@ -115,7 +118,7 @@ export function ChecklistView({
       )}
 
       {readySteps.length === 0 && blockedSteps.length === 0 && (
-        <div className={styles.allDone}>All steps completed! Enjoy your meal!</div>
+        <div className={styles.allDone}>{messages.checklist.allDone}</div>
       )}
     </div>
   );

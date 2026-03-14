@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { PlannedStep, SearchResult, ExpandedSections } from "@/types";
 import { loadRecipe, loadRecipeFromUrl, getDomain } from "@/services/api";
+import { useI18n } from "@/i18n";
 
 interface RecipeState {
   selectedRecipe: SearchResult | null;
@@ -32,6 +33,7 @@ interface RecipeActions {
 export function useRecipeState(): [RecipeState, RecipeActions] {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { messages } = useI18n();
 
   const [selectedRecipe, setSelectedRecipe] = useState<SearchResult | null>(null);
   const [steps, setSteps] = useState<PlannedStep[]>([]);
@@ -43,11 +45,12 @@ export function useRecipeState(): [RecipeState, RecipeActions] {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [recipeViewMode, setRecipeViewMode] = useState<"checklist" | "graph">("checklist");
+  const [recipeViewMode, setRecipeViewMode] = useState<"checklist" | "graph">(
+    "checklist"
+  );
   const [shareStatus, setShareStatus] = useState<"idle" | "copied">("idle");
   const [recipeUrl, setRecipeUrl] = useState<string | null>(null);
 
-  // Load recipe from URL parameter on mount
   useEffect(() => {
     const recipeUrl = searchParams.get("recipe");
     if (recipeUrl) {
@@ -63,72 +66,77 @@ export function useRecipeState(): [RecipeState, RecipeActions] {
           });
         })
         .catch(() => {
-          setError("Could not load this recipe. The website may not be supported.");
+          setError(messages.recipe.loadError);
         })
         .finally(() => {
           setLoading(false);
         });
     }
-  }, [searchParams]);
+  }, [messages.recipe.loadError, searchParams]);
 
-  const handleSelectRecipe = useCallback(async (recipe: SearchResult) => {
-    setSelectedRecipe(recipe);
-    setRecipeViewMode("checklist");
-    setLoading(true);
-    setCompletedSteps(new Set());
-    setError("");
-    setShareStatus("idle");
-
-    try {
-      const data = await loadRecipe(recipe);
-      setSteps(data.planned_steps);
-      setRecipeUrl(recipe.url);
-      // Update URL with recipe parameter
-      router.push(`?recipe=${encodeURIComponent(recipe.url)}`, {
-        scroll: false,
-      });
-    } catch {
-      setError("Could not load this recipe. The website may not be supported.");
-      setSelectedRecipe(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [router]);
-
-  const handleLoadFromUrl = useCallback(async (url: string) => {
-    if (!url.trim()) {
-      setError("Please enter a recipe URL");
-      return;
-    }
-
-    setLoading(true);
-    setCompletedSteps(new Set());
-    setError("");
-    setShareStatus("idle");
-
-    const trimmedUrl = url.trim();
-
-    try {
-      const data = await loadRecipeFromUrl(trimmedUrl);
-      setSteps(data.planned_steps);
+  const handleSelectRecipe = useCallback(
+    async (recipe: SearchResult) => {
+      setSelectedRecipe(recipe);
       setRecipeViewMode("checklist");
-      setSelectedRecipe({
-        title: getDomain(trimmedUrl),
-        url: trimmedUrl,
-        snippet: "",
-      });
-      setRecipeUrl(trimmedUrl);
-      // Update URL with recipe parameter
-      router.push(`?recipe=${encodeURIComponent(trimmedUrl)}`, { scroll: false });
-    } catch {
-      setError("Could not load this recipe. The website may not be supported.");
-    } finally {
-      setLoading(false);
-    }
-  }, [router]);
+      setLoading(true);
+      setCompletedSteps(new Set());
+      setError("");
+      setShareStatus("idle");
+
+      try {
+        const data = await loadRecipe(recipe);
+        setSteps(data.planned_steps);
+        setRecipeUrl(recipe.url);
+        router.push(`?recipe=${encodeURIComponent(recipe.url)}`, {
+          scroll: false,
+        });
+      } catch {
+        setError(messages.recipe.loadError);
+        setSelectedRecipe(null);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [messages.recipe.loadError, router]
+  );
+
+  const handleLoadFromUrl = useCallback(
+    async (url: string) => {
+      if (!url.trim()) {
+        setError(messages.search.urlRequired);
+        return;
+      }
+
+      setLoading(true);
+      setCompletedSteps(new Set());
+      setError("");
+      setShareStatus("idle");
+
+      const trimmedUrl = url.trim();
+
+      try {
+        const data = await loadRecipeFromUrl(trimmedUrl);
+        setSteps(data.planned_steps);
+        setRecipeViewMode("checklist");
+        setSelectedRecipe({
+          title: getDomain(trimmedUrl),
+          url: trimmedUrl,
+          snippet: "",
+        });
+        setRecipeUrl(trimmedUrl);
+        router.push(`?recipe=${encodeURIComponent(trimmedUrl)}`, {
+          scroll: false,
+        });
+      } catch {
+        setError(messages.recipe.loadError);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [messages.recipe.loadError, messages.search.urlRequired, router]
+  );
 
   const handleBackToSearch = useCallback(() => {
-    // Reset all state to initial values
     setSelectedRecipe(null);
     setRecipeViewMode("checklist");
     setSteps([]);
@@ -136,7 +144,6 @@ export function useRecipeState(): [RecipeState, RecipeActions] {
     setError("");
     setShareStatus("idle");
     setRecipeUrl(null);
-    // Clear URL parameter
     router.push("/", { scroll: false });
   }, [router]);
 
@@ -161,7 +168,9 @@ export function useRecipeState(): [RecipeState, RecipeActions] {
 
   const handleShare = useCallback(() => {
     if (!selectedRecipe) return;
-    const shareUrl = `${window.location.origin}?recipe=${encodeURIComponent(selectedRecipe.url)}`;
+    const shareUrl = `${window.location.origin}?recipe=${encodeURIComponent(
+      selectedRecipe.url
+    )}`;
     navigator.clipboard.writeText(shareUrl).then(() => {
       setShareStatus("copied");
       setTimeout(() => setShareStatus("idle"), 2000);
@@ -170,17 +179,17 @@ export function useRecipeState(): [RecipeState, RecipeActions] {
 
   const refreshRecipe = useCallback(async () => {
     if (!recipeUrl) return;
-    
+
     setLoading(true);
     try {
       const data = await loadRecipeFromUrl(recipeUrl);
       setSteps(data.planned_steps);
     } catch {
-      setError("Could not refresh this recipe.");
+      setError(messages.recipe.refreshError);
     } finally {
       setLoading(false);
     }
-  }, [recipeUrl]);
+  }, [messages.recipe.refreshError, recipeUrl]);
 
   return [
     {

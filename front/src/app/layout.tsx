@@ -1,19 +1,9 @@
-import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Metadata } from "next";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+import { APP_NAME, I18nProvider } from "@/i18n";
 
 export const metadata: Metadata = {
-  title: "Flow Recipe",
+  title: APP_NAME,
   description: "Turn any recipe into an interactive cooking checklist",
 };
 
@@ -24,8 +14,8 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable}`}>
-        {children}
+      <body>
+        <I18nProvider>{children}</I18nProvider>
       </body>
     </html>
   );

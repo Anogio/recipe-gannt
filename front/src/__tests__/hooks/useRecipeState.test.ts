@@ -184,13 +184,14 @@ describe('useRecipeState Hook', () => {
     expect(updatedState.expandedSections.ready).toBe(true);
   });
 
-  it('should handle back to search', () => {
+  it('should handle back to search', async () => {
+    require('@/services/api').loadRecipe.mockResolvedValue({ planned_steps: [] });
+
     const { result } = renderHook(() => useRecipeState());
-    
-    // Set some state first
-    act(() => {
+
+    await act(async () => {
       const [, actions] = result.current;
-      actions.handleSelectRecipe({
+      await actions.handleSelectRecipe({
         title: 'Test',
         url: 'https://example.com',
         snippet: 'Test',
@@ -212,17 +213,18 @@ describe('useRecipeState Hook', () => {
   });
 
   it('should handle share functionality', async () => {
+    require('@/services/api').loadRecipe.mockResolvedValue({ planned_steps: [] });
+
     const mockClipboard = {
       writeText: jest.fn().mockResolvedValue(undefined),
     };
     global.navigator.clipboard = mockClipboard;
 
     const { result } = renderHook(() => useRecipeState());
-    
-    // Set a recipe first
-    act(() => {
+
+    await act(async () => {
       const [, actions] = result.current;
-      actions.handleSelectRecipe({
+      await actions.handleSelectRecipe({
         title: 'Test',
         url: 'https://example.com/recipe',
         snippet: 'Test',

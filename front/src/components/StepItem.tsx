@@ -2,6 +2,7 @@
 
 import React, { useCallback } from "react";
 import styles from "@/app/page.module.css";
+import { useI18n } from "@/i18n";
 import { PlannedStep, TimerState } from "@/types";
 import { TimerControls } from "./TimerControls";
 
@@ -30,6 +31,8 @@ export const StepItem = React.memo(function StepItem({
   onPauseTimer,
   onResetTimer,
 }: StepItemProps) {
+  const { messages } = useI18n();
+
   const handleToggle = useCallback(() => {
     onToggle(step.step_id);
   }, [step.step_id, onToggle]);
@@ -53,7 +56,7 @@ export const StepItem = React.memo(function StepItem({
         </div>
         {blockingDeps && blockingDeps.length > 0 && (
           <div className={styles.blockingDeps}>
-            Waiting for: {blockingDeps.join(", ")}
+            {messages.checklist.waitingFor(blockingDeps.join(", "))}
           </div>
         )}
       </li>
@@ -80,7 +83,9 @@ export const StepItem = React.memo(function StepItem({
           </span>
           {step.ingredients && step.ingredients.length > 0 && (
             <span
-              className={`${styles.stepIngredients} ${isCompleted ? styles.completedText : ""}`}
+              className={`${styles.stepIngredients} ${
+                isCompleted ? styles.completedText : ""
+              }`}
             >
               {step.ingredients.join(", ")}
             </span>

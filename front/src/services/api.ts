@@ -4,6 +4,7 @@ import {
   SearchResponse,
   SearchResult,
 } from "@/types";
+import type { Locale } from "@/i18n";
 
 const BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ||
@@ -13,10 +14,11 @@ const BASE_URL =
 
 export async function searchRecipes(
   query: string,
+  locale: Locale,
   page: number = 0
 ): Promise<SearchResponse> {
   const response = await fetch(
-    `${BASE_URL}/search_recipes?query=${encodeURIComponent(query)}&page=${page}`
+    `${BASE_URL}/search_recipes?query=${encodeURIComponent(query)}&locale=${locale}&page=${page}`
   );
 
   if (!response.ok) {

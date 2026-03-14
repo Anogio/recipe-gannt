@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState, useCallback, useMemo } from "react";
+import React, { useCallback, useMemo } from "react";
 import { PlannedStep, SearchResult, Timers, ExpandedSections } from "@/types";
-import { ChecklistView, RecipeGraph } from "@/components";
+import { APP_NAME, useI18n } from "@/i18n";
+import { ChecklistView, LanguageSwitcher, RecipeGraph } from "@/components";
 import { getDomain } from "@/services/api";
 import styles from "@/app/page.module.css";
 
@@ -43,6 +44,8 @@ export function RecipeView({
   shareStatus,
   setRecipeViewMode,
 }: RecipeViewProps) {
+  const { messages } = useI18n();
+
   const readySteps = useMemo(
     () =>
       steps.filter(
@@ -92,9 +95,12 @@ export function RecipeView({
   return (
     <div className={styles.appContainer}>
       <header className={styles.appHeader}>
+        <div className={styles.headerTopRow}>
+          <LanguageSwitcher />
+        </div>
         <h1>
           <span onClick={onBackToSearch} className={styles.titleLink}>
-            Flow Recipe
+            {APP_NAME}
           </span>
         </h1>
       </header>
@@ -103,14 +109,13 @@ export function RecipeView({
         <div className={styles.selectedRecipeInfo}>
           <span className={styles.recipeName}>{recipe.title}</span>
           <span className={styles.recipeSource}>{getDomain(recipe.url)}</span>
-          <span className={styles.aiDisclaimer}>
-            AI was used to extract and structure these steps. Double-check key
-            details.
-          </span>
+          <span className={styles.aiDisclaimer}>{messages.recipe.aiDisclaimer}</span>
         </div>
         <div className={styles.selectedRecipeActions}>
           <button onClick={onShare} className={styles.shareButton}>
-            {shareStatus === "copied" ? "Copied!" : "Share"}
+            {shareStatus === "copied"
+              ? messages.recipe.copied
+              : messages.recipe.share}
           </button>
           <a
             href={recipe.url}
@@ -118,10 +123,10 @@ export function RecipeView({
             rel="noopener noreferrer"
             className={styles.originalLink}
           >
-            View original
+            {messages.recipe.viewOriginal}
           </a>
           <button onClick={onBackToSearch} className={styles.backButton}>
-            Select another recipe
+            {messages.recipe.selectAnother}
           </button>
         </div>
       </div>
@@ -134,22 +139,26 @@ export function RecipeView({
           />
         </div>
         <p className={styles.progressText}>
-          {completedSteps.size} of {steps.length} steps completed
+          {messages.recipe.progressText(completedSteps.size, steps.length)}
         </p>
       </div>
 
       <div className={styles.segmentedPicker}>
         <button
-          className={`${styles.segmentButton} ${recipeViewMode === "checklist" ? styles.segmentButtonActive : ""}`}
+          className={`${styles.segmentButton} ${
+            recipeViewMode === "checklist" ? styles.segmentButtonActive : ""
+          }`}
           onClick={() => setRecipeViewMode("checklist")}
         >
-          Checklist
+          {messages.recipe.checklist}
         </button>
         <button
-          className={`${styles.segmentButton} ${recipeViewMode === "graph" ? styles.segmentButtonActive : ""}`}
+          className={`${styles.segmentButton} ${
+            recipeViewMode === "graph" ? styles.segmentButtonActive : ""
+          }`}
           onClick={() => setRecipeViewMode("graph")}
         >
-          Graph
+          {messages.recipe.graph}
         </button>
       </div>
 
